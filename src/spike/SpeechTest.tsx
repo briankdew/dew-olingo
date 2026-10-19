@@ -69,6 +69,25 @@ interface TimelineEntry {
   name: string
 }
 
+interface Diag {
+  experiments: { e1: boolean; e2: boolean; e3: boolean }
+  instanceId: number | null
+  startCountOnInstance: number | null
+  attemptsOnInstance: number | null
+  sessionReused: boolean | null
+  msSincePageLoad: number
+  endedBy: string
+  micStream: string
+  idleEvents: { atMs: number; name: string }[]
+}
+
+interface E2Active {
+  event: (name: string) => void
+  result: (e: RecognitionEvent) => void
+  error: (code: string) => void
+  end: () => void
+}
+
 interface Attempt {
   id: number
   phraseId: number
@@ -87,6 +106,7 @@ interface Attempt {
   resultLog: ResultLogEntry[]
   timeline: TimelineEntry[]
   context: { ttsSpeaking: boolean; msSincePreviousEnd: number | null; visibility: string }
+  diag: Diag
   online: boolean
   at: string
 }
@@ -153,6 +173,24 @@ export function SpeechTest() {
   const nextId = useRef(1)
   const lastEndAt = useRef<number | null>(null)
   const logRef = useRef<((name: string) => void) | null>(null)
+  // Experiments for the iPhone Safari "attempts 2+ stall" diagnosis. All off = original behavior.
+  const [exp1, setExp1] = useState(false)
+  const [exp2, setExp2] = useState(false)
+  const [exp3, setExp3] = useState(false)
+  const [micStatus, setMicStatus] = useState('off')
+  const exp3Ref = useRef(false)
+  const micStreamRef = useRef<MediaStream | null>(null)
+  const persistentRef = useRef<Recognition | null>(null)
+  const sessionAlive = useRef(false)
+  const sessionLang = useRef<Lang | null>(null)
+  const sessionLen = useRef(0)
+  const e2Active = useRef<E2Active | null>(null)
+  const doneRef = useRef<(() => void) | null>(null)
+  const stopTapped = useRef(false)
+  const idleEvents = useRef<{ atMs: number; name: string }[]>([])
+  const instInfo = useRef(new Map<Recognition, { id: number; starts: number; attempts: number }>())
+  const instanceSeq = useRef(0)
+  const pageLoadAt = useRef(performance.now())
 
   const recognition = getCtor()
   const hasSynthesis = 'speechSynthesis' in window
@@ -188,10 +226,103 @@ export function SpeechTest() {
     () => () => {
       logRef.current?.('js:abort() (unmount)')
       recRef.current?.abort()
+      dropPersistent()
+      stopMic()
       if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     },
     [],
   )
+
+  // Detach and abort the reused (E1) or continuous (E2) instance; nulling the ref first mutes its handlers.
+  function dropPersistent() {
+    const r = persistentRef.current
+    persistentRef.current = null
+    sessionAlive.current = false
+    e2Active.current = null
+    r?.abort()
+  }
+
+  function stopMic() {
+    micStreamRef.current?.getTracks().forEach((tr) => tr.stop())
+    micStreamRef.current = null
+  }
+
+  function micState(): string {
+    if (!exp3Ref.current) return 'off'
+    const s = micStreamRef.current
+    if (!s) return 'not-acquired'
+    return s.getTracks().every((tr) => tr.readyState === 'live') ? 'live' : 'ended'
+  }
+
+  function toggleReuse(on: boolean) {
+    dropPersistent()
+    setExp1(on)
+  }
+
+  function toggleContinuous(on: boolean) {
+    dropPersistent()
+    setExp2(on)
+  }
+
+  // Runs in the checkbox click so getUserMedia keeps the user gesture; the stream is held until unchecked.
+  async function toggleMic(on: boolean) {
+    setExp3(on)
+    exp3Ref.current = on
+    if (!on) {
+      stopMic()
+      setMicStatus('off')
+      return
+    }
+    setMicStatus('requesting')
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!exp3Ref.current) {
+        s.getTracks().forEach((tr) => tr.stop())
+        return
+      }
+      micStreamRef.current = s
+      setMicStatus('live')
+    } catch (err) {
+      setMicStatus(`failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  // E2: handlers live on the session instance for its whole life and forward to whichever attempt is active.
+  function bindSession(rec: Recognition) {
+    const live = () => persistentRef.current === rec
+    const idle = (name: string) =>
+      idleEvents.current.push({ atMs: Math.round(performance.now() - pageLoadAt.current), name })
+    const evt = (name: string) => () => {
+      if (!live()) return
+      if (e2Active.current) e2Active.current.event(name)
+      else idle(name)
+    }
+    rec.onstart = evt('start')
+    rec.onaudiostart = evt('audiostart')
+    rec.onsoundstart = evt('soundstart')
+    rec.onspeechstart = evt('speechstart')
+    rec.onspeechend = evt('speechend')
+    rec.onsoundend = evt('soundend')
+    rec.onaudioend = evt('audioend')
+    rec.onnomatch = evt('nomatch')
+    rec.onresult = (e) => {
+      if (!live()) return
+      sessionLen.current = e.results.length
+      if (e2Active.current) e2Active.current.result(e)
+      else idle('result')
+    }
+    rec.onerror = (e) => {
+      if (!live()) return
+      if (e2Active.current) e2Active.current.error(e.error)
+      else idle(`error:${e.error}`)
+    }
+    rec.onend = () => {
+      if (!live()) return
+      sessionAlive.current = false
+      if (e2Active.current) e2Active.current.end()
+      else idle('end')
+    }
+  }
 
   function playAll(v: SpeechSynthesisVoice) {
     const key = voiceKey(v)
@@ -224,7 +355,28 @@ export function SpeechTest() {
       visibility: document.visibilityState,
     }
 
-    function finish(rec: Recognition | null) {
+    stopTapped.current = false
+    let finished = false
+    let offset = 0
+    const diag: Diag = {
+      experiments: { e1: exp1, e2: exp2, e3: exp3 },
+      instanceId: null,
+      startCountOnInstance: null,
+      attemptsOnInstance: null,
+      sessionReused: null,
+      msSincePageLoad: Math.round(startedAt - pageLoadAt.current),
+      endedBy: 'natural',
+      micStream: micState(),
+      idleEvents: idleEvents.current.splice(0),
+    }
+
+    function finish(rec: Recognition | null, reason?: string) {
+      if (finished) return
+      finished = true
+      diag.endedBy = reason ?? (stopTapped.current ? 'stop-tap' : 'natural')
+      diag.micStream = micState()
+      e2Active.current = null
+      doneRef.current = null
       const first = finals[0]
       const finalAlternatives: RecognitionAlternative[] = first
         ? Array.from({ length: first.length }, (_, i) => ({
@@ -259,6 +411,7 @@ export function SpeechTest() {
         resultLog,
         timeline,
         context,
+        diag,
         online: navigator.onLine,
         at: new Date().toISOString(),
       }
@@ -275,36 +428,56 @@ export function SpeechTest() {
       finish(null)
       return
     }
-    const rec = new recognition.ctor()
-    rec.lang = lang
-    rec.continuous = false
-    rec.interimResults = true
-    rec.maxAlternatives = 3
+    let rec: Recognition
+    let sessionLive = false
+    if (exp2) {
+      const existing = persistentRef.current
+      sessionLive = existing !== null && sessionAlive.current && sessionLang.current === lang
+      if (existing && sessionLive) {
+        rec = existing
+        offset = sessionLen.current
+      } else {
+        dropPersistent()
+        rec = new recognition.ctor()
+        persistentRef.current = rec
+        sessionAlive.current = true
+        sessionLang.current = lang
+        sessionLen.current = 0
+        rec.lang = lang
+        rec.continuous = true
+        rec.interimResults = true
+        rec.maxAlternatives = 3
+        bindSession(rec)
+      }
+    } else {
+      rec = (exp1 ? persistentRef.current : null) ?? new recognition.ctor()
+      if (exp1) persistentRef.current = rec
+      rec.lang = lang
+      rec.continuous = false
+      rec.interimResults = true
+      rec.maxAlternatives = 3
+    }
     const mark = (name: string) => () => {
       events.push(name)
       log(name)
     }
-    rec.onstart = mark('start')
-    rec.onaudiostart = mark('audiostart')
-    rec.onsoundstart = mark('soundstart')
-    rec.onspeechstart = mark('speechstart')
-    rec.onspeechend = mark('speechend')
-    rec.onsoundend = mark('soundend')
-    rec.onaudioend = mark('audioend')
-    rec.onnomatch = mark('nomatch')
-    rec.onresult = (e) => {
+    const onResult = (e: RecognitionEvent) => {
       events.push('result')
       log('result')
-      lastSnapshot = Array.from({ length: e.results.length }, (_, i) => ({
-        isFinal: e.results[i].isFinal,
-        alternatives: Array.from({ length: e.results[i].length }, (_, j) => ({
-          transcript: e.results[i][j].transcript,
-          confidence: e.results[i][j].confidence,
-        })),
-      }))
+      // In a continuous session (E2) results accumulate; `offset` skips those from earlier phrases.
+      lastSnapshot = Array.from({ length: e.results.length - offset }, (_, k) => {
+        const i = k + offset
+        return {
+          isFinal: e.results[i].isFinal,
+          alternatives: Array.from({ length: e.results[i].length }, (_, j) => ({
+            transcript: e.results[i][j].transcript,
+            confidence: e.results[i][j].confidence,
+          })),
+        }
+      })
       resultLog.push({ t: t(), resultIndex: e.resultIndex, results: lastSnapshot })
       let partial = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = Math.max(e.resultIndex, offset); i < e.results.length; i++) {
         const r = e.results[i]
         if (r.isFinal) {
           finals.push(r)
@@ -314,28 +487,63 @@ export function SpeechTest() {
         }
       }
       setInterim(partial)
+      // The continuous session never ends on its own, so the first final closes the attempt.
+      if (exp2 && finals.length > 0) finish(rec, 'final-result')
     }
-    rec.onerror = (e) => {
+    const onError = (e: RecognitionErrorEvent) => {
       events.push(`error:${e.error}`)
       log(`error:${e.error}`)
       error = e.error
     }
-    rec.onend = () => {
+    const onEnd = () => {
       events.push('end')
       log('end')
-      finish(rec)
+      finish(rec, exp2 ? 'session-end' : undefined)
+    }
+    const info = instInfo.current.get(rec) ?? { id: ++instanceSeq.current, starts: 0, attempts: 0 }
+    instInfo.current.set(rec, info)
+    info.attempts++
+    diag.instanceId = info.id
+    diag.attemptsOnInstance = info.attempts
+    diag.sessionReused = exp2 ? sessionLive : null
+    if (exp2) {
+      e2Active.current = { event: (name) => mark(name)(), result: onResult, error: (code) => onError({ error: code }), end: onEnd }
+      doneRef.current = () => {
+        log('js:done (no stop)')
+        finish(rec, 'done-tap')
+      }
+    } else {
+      rec.onstart = mark('start')
+      rec.onaudiostart = mark('audiostart')
+      rec.onsoundstart = mark('soundstart')
+      rec.onspeechstart = mark('speechstart')
+      rec.onspeechend = mark('speechend')
+      rec.onsoundend = mark('soundend')
+      rec.onaudioend = mark('audioend')
+      rec.onnomatch = mark('nomatch')
+      rec.onresult = onResult
+      rec.onerror = onError
+      rec.onend = onEnd
     }
     recRef.current = rec
     logRef.current = log
     setListeningPhrase(phrase.id)
     setInterim('')
+    if (exp2 && sessionLive) {
+      diag.startCountOnInstance = info.starts
+      log('js:start() skipped (continuous session live)')
+      return
+    }
     try {
+      info.starts++
+      diag.startCountOnInstance = info.starts
       log('js:start()')
       rec.start()
     } catch (err) {
       log('js:start() threw')
       error = `start-threw: ${err instanceof Error ? err.message : String(err)}`
-      finish(rec)
+      if (exp2) sessionAlive.current = false
+      finish(rec, 'start-threw')
     }
   }
 
@@ -451,6 +659,25 @@ export function SpeechTest() {
           </label>
         ))}
       </p>
+      <p>
+        Experiments (iPhone Safari diagnosis; leave all off for normal behavior; reload the page between experiments):
+        <br />
+        <label>
+          <input type="checkbox" checked={exp1} disabled={listeningPhrase !== null || exp2} onChange={(e) => toggleReuse(e.target.checked)} /> E1
+          reuse one instance, start() each attempt
+        </label>
+        <br />
+        <label>
+          <input type="checkbox" checked={exp2} disabled={listeningPhrase !== null || exp1} onChange={(e) => toggleContinuous(e.target.checked)} /> E2
+          one continuous session, no stop() between phrases (Stop becomes Done)
+        </label>
+        <br />
+        <label>
+          <input type="checkbox" checked={exp3} disabled={listeningPhrase !== null} onChange={(e) => void toggleMic(e.target.checked)} /> E3 hold a
+          getUserMedia mic stream open
+        </label>{' '}
+        ({micStatus})
+      </p>
       <p>Click Listen, then say the phrase. The first click triggers the mic permission prompt. Attempt every phrase in both languages.</p>
       {PHRASES.map((p) => (
         <div key={p.id} style={{ borderTop: '1px solid #ccc', padding: '8px 0' }}>
@@ -464,11 +691,16 @@ export function SpeechTest() {
           </button>{' '}
           {listeningPhrase === p.id && <button
               onClick={() => {
+                if (exp2) {
+                  doneRef.current?.()
+                  return
+                }
+                stopTapped.current = true
                 logRef.current?.('js:stop()')
                 recRef.current?.stop()
               }}
             >
-              Stop
+              {exp2 ? 'Done' : 'Stop'}
             </button>}
           {listeningPhrase === p.id && interim && <div>Interim: {interim}</div>}
           {attempts
@@ -481,6 +713,12 @@ export function SpeechTest() {
                   {a.alternativeMatches && !a.autoMatch ? ' (a lower-ranked alternative matches)' : ''}
                   {a.error ? ` · error: ${a.error}` : ''}
                   {a.latencyMs !== null ? ` · ${a.latencyMs} ms` : ''}
+                </div>
+                <div>
+                  endedBy: {a.diag.endedBy} · instance #{a.diag.instanceId} (attempt {a.diag.attemptsOnInstance}, start() x
+                  {a.diag.startCountOnInstance}
+                  {a.diag.sessionReused !== null ? `, session ${a.diag.sessionReused ? 'reused' : 'new'}` : ''}) · mic stream:{' '}
+                  {a.diag.micStream}
                 </div>
                 {a.alternatives.length > 0 && (
                   <div>
