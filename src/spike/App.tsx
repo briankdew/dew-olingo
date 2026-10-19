@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ResultsPanel } from './ResultsPanel'
+import { SpeechTest } from './SpeechTest'
 
 const ROUTES = [
   { path: '/speech', label: 'Web Speech (stages b, c)' },
@@ -34,7 +35,12 @@ export function App() {
           </a>
         ))}
       </nav>
-      {route ? (
+      {route?.path === '/speech' ? (
+        <>
+          <h2>{route.label}</h2>
+          <SpeechTest />
+        </>
+      ) : route ? (
         <>
           <h2>{route.label}</h2>
           <p>Not implemented yet.</p>
