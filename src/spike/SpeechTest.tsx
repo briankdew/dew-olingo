@@ -55,6 +55,20 @@ const LANGS = ['es-ES', 'es-MX'] as const
 type Lang = (typeof LANGS)[number]
 const HARD_ERRORS = ['not-allowed', 'service-not-allowed', 'language-not-supported']
 
+interface ResultSnapshot {
+  isFinal: boolean
+  alternatives: RecognitionAlternative[]
+}
+interface ResultLogEntry {
+  t: number
+  resultIndex: number
+  results: ResultSnapshot[]
+}
+interface TimelineEntry {
+  t: number
+  name: string
+}
+
 interface Attempt {
   id: number
   phraseId: number
@@ -69,6 +83,10 @@ interface Attempt {
   error: string | null
   latencyMs: number | null
   events: string[]
+  transcriptSource: 'final' | 'interim-fallback' | 'none'
+  resultLog: ResultLogEntry[]
+  timeline: TimelineEntry[]
+  context: { ttsSpeaking: boolean; msSincePreviousEnd: number | null; visibility: string }
   online: boolean
   at: string
 }
@@ -121,6 +139,7 @@ export function SpeechTest() {
   const [notes, setNotes] = useState('')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [totalVoices, setTotalVoices] = useState(0)
+  const [rawEsVoices, setRawEsVoices] = useState(0)
   const [voiceRatings, setVoiceRatings] = useState<Record<string, number>>({})
   const [played, setPlayed] = useState<Record<string, boolean>>({})
   const [ttsErrors, setTtsErrors] = useState<Record<string, string[]>>({})
@@ -132,6 +151,8 @@ export function SpeechTest() {
   const [permAfter, setPermAfter] = useState<string | null>(null)
   const recRef = useRef<Recognition | null>(null)
   const nextId = useRef(1)
+  const lastEndAt = useRef<number | null>(null)
+  const logRef = useRef<((name: string) => void) | null>(null)
 
   const recognition = getCtor()
   const hasSynthesis = 'speechSynthesis' in window
@@ -145,7 +166,18 @@ export function SpeechTest() {
     const load = () => {
       const all = window.speechSynthesis.getVoices()
       setTotalVoices(all.length)
-      setVoices(all.filter((v) => /^es(-|$)/i.test(v.lang.replace('_', '-'))))
+      const es = all.filter((v) => /^es(-|$)/i.test(v.lang.replace('_', '-')))
+      // iPhone Safari returned each voice 3 times; keep the first copy of each key.
+      const seen = new Set<string>()
+      setRawEsVoices(es.length)
+      setVoices(
+        es.filter((v) => {
+          const key = voiceKey(v)
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        }),
+      )
     }
     load()
     window.speechSynthesis.addEventListener('voiceschanged', load)
@@ -154,6 +186,7 @@ export function SpeechTest() {
 
   useEffect(
     () => () => {
+      logRef.current?.('js:abort() (unmount)')
       recRef.current?.abort()
       if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     },
@@ -180,16 +213,33 @@ export function SpeechTest() {
     const finals: RecognitionResult[] = []
     let error: string | null = null
     let latencyMs: number | null = null
+    const timeline: TimelineEntry[] = []
+    const resultLog: ResultLogEntry[] = []
+    let lastSnapshot: ResultSnapshot[] = []
+    const t = () => Math.round(performance.now() - startedAt)
+    const log = (name: string) => timeline.push({ t: t(), name })
+    const context: Attempt['context'] = {
+      ttsSpeaking: hasSynthesis && window.speechSynthesis.speaking,
+      msSincePreviousEnd: lastEndAt.current === null ? null : Math.round(startedAt - lastEndAt.current),
+      visibility: document.visibilityState,
+    }
 
     function finish(rec: Recognition | null) {
       const first = finals[0]
-      const alternatives: RecognitionAlternative[] = first
+      const finalAlternatives: RecognitionAlternative[] = first
         ? Array.from({ length: first.length }, (_, i) => ({
             transcript: first[i].transcript,
             confidence: first[i].confidence,
           }))
         : []
-      const transcript = finals.map((r) => r[0].transcript).join(' ').trim()
+      const finalTranscript = finals.map((r) => r[0].transcript).join(' ').trim()
+      // Some browsers may never send isFinal; fall back to the last interim snapshot and flag it.
+      const fallbackTranscript = lastSnapshot.map((r) => r.alternatives[0]?.transcript ?? '').join(' ').trim()
+      const useFallback = finals.length === 0 && fallbackTranscript !== ''
+      const transcript = useFallback ? fallbackTranscript : finalTranscript
+      const alternatives = useFallback ? (lastSnapshot[0]?.alternatives ?? []) : finalAlternatives
+      const transcriptSource: Attempt['transcriptSource'] =
+        finals.length > 0 ? 'final' : useFallback ? 'interim-fallback' : 'none'
       const expected = normalize(phrase.text)
       const attempt: Attempt = {
         id: nextId.current++,
@@ -205,12 +255,17 @@ export function SpeechTest() {
         error,
         latencyMs,
         events,
+        transcriptSource,
+        resultLog,
+        timeline,
+        context,
         online: navigator.onLine,
         at: new Date().toISOString(),
       }
       setAttempts((a) => [...a, attempt])
       setListeningPhrase(null)
       setInterim('')
+      lastEndAt.current = performance.now()
       if (recRef.current === rec) recRef.current = null
       micPermission().then(setPermAfter)
     }
@@ -225,7 +280,10 @@ export function SpeechTest() {
     rec.continuous = false
     rec.interimResults = true
     rec.maxAlternatives = 3
-    const mark = (name: string) => () => events.push(name)
+    const mark = (name: string) => () => {
+      events.push(name)
+      log(name)
+    }
     rec.onstart = mark('start')
     rec.onaudiostart = mark('audiostart')
     rec.onsoundstart = mark('soundstart')
@@ -236,6 +294,15 @@ export function SpeechTest() {
     rec.onnomatch = mark('nomatch')
     rec.onresult = (e) => {
       events.push('result')
+      log('result')
+      lastSnapshot = Array.from({ length: e.results.length }, (_, i) => ({
+        isFinal: e.results[i].isFinal,
+        alternatives: Array.from({ length: e.results[i].length }, (_, j) => ({
+          transcript: e.results[i][j].transcript,
+          confidence: e.results[i][j].confidence,
+        })),
+      }))
+      resultLog.push({ t: t(), resultIndex: e.resultIndex, results: lastSnapshot })
       let partial = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i]
@@ -250,18 +317,23 @@ export function SpeechTest() {
     }
     rec.onerror = (e) => {
       events.push(`error:${e.error}`)
+      log(`error:${e.error}`)
       error = e.error
     }
     rec.onend = () => {
       events.push('end')
+      log('end')
       finish(rec)
     }
     recRef.current = rec
+    logRef.current = log
     setListeningPhrase(phrase.id)
     setInterim('')
     try {
+      log('js:start()')
       rec.start()
     } catch (err) {
+      log('js:start() threw')
       error = `start-threw: ${err instanceof Error ? err.message : String(err)}`
       finish(rec)
     }
@@ -301,6 +373,8 @@ export function SpeechTest() {
       speechSynthesis: hasSynthesis,
       totalVoices,
       esVoices: voices.length,
+      rawEsVoiceCount: rawEsVoices,
+      duplicateVoiceCount: rawEsVoices - voices.length,
       online: navigator.onLine,
       micPermissionBefore: permBefore,
       micPermissionAfterLatestAttempt: permAfter,
@@ -321,6 +395,7 @@ export function SpeechTest() {
       bestVoiceRating,
       correctPhrases: { 'es-ES': correctPhrases('es-ES'), 'es-MX': correctPhrases('es-MX') },
       hardErrors,
+      interimFallbackAttempts: attempts.filter((a) => a.transcriptSource === 'interim-fallback').length,
       verdict,
       reasons: verdictReasons,
     },
@@ -387,7 +462,14 @@ export function SpeechTest() {
           <button onClick={() => listen(p)} disabled={listeningPhrase !== null}>
             {listeningPhrase === p.id ? 'Listening…' : `Listen (${lang})`}
           </button>{' '}
-          {listeningPhrase === p.id && <button onClick={() => recRef.current?.stop()}>Stop</button>}
+          {listeningPhrase === p.id && <button
+              onClick={() => {
+                logRef.current?.('js:stop()')
+                recRef.current?.stop()
+              }}
+            >
+              Stop
+            </button>}
           {listeningPhrase === p.id && interim && <div>Interim: {interim}</div>}
           {attempts
             .filter((a) => a.phraseId === p.id)
@@ -395,6 +477,7 @@ export function SpeechTest() {
               <div key={a.id} style={{ marginTop: 6, paddingLeft: 12, borderLeft: '3px solid #ddd' }}>
                 <div>
                   [{a.lang}] “{a.transcript || '(nothing)'}” · auto-match: {String(a.autoMatch)}
+                  {a.transcriptSource !== 'final' ? ` · source: ${a.transcriptSource}` : ''}
                   {a.alternativeMatches && !a.autoMatch ? ' (a lower-ranked alternative matches)' : ''}
                   {a.error ? ` · error: ${a.error}` : ''}
                   {a.latencyMs !== null ? ` · ${a.latencyMs} ms` : ''}
