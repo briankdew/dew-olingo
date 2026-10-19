@@ -27,6 +27,7 @@ Personal web app for learning Spanish from a very basic starting level. Multimod
 
 - No fallback LLM providers or fallback audio engines in the proof of concept. Keep the LLM behind a small provider interface so one can be added later.
 - The Gemini key and the GitHub PAT live only in each device's browser storage. Never commit, bundle, or sync them. The Gemini key is restricted to the `github.io` origin and to the Generative Language API.
+- The target dialect is es-MX (Mexican Spanish).
 - Review logs are append-only so they merge cleanly across devices.
 - The app repo is assumed public, because Pages from a private repo on a free plan is believed unsupported (unverified). No secrets may ever be in this repo.
 
@@ -35,7 +36,13 @@ Personal web app for learning Spanish from a very basic starting level. Multimod
 Do not assume any of these work. Test them and report the result as verified or failed.
 
 - Authenticated browser calls from a `github.io` origin to `api.github.com`, including read and write of a private repo's contents with a fine-grained PAT (CORS and permissions).
-- Spanish speech recognition and speech synthesis quality via the Web Speech API on Chromebook, iPhone, iPad, and MacBook.
+- **VERIFIED 2026-10-19:** Spanish speech recognition and synthesis via the Web Speech API on Chromebook (HP Chromebook x360 14c, Chrome 154, online).
+  - Recognition: `es-ES` 5/5 phrases correct on the first try. `es-MX` 4/5 on the first try, 5/5 with one retry. No hard errors.
+  - Synthesis: 24 Spanish voices, 7 rated 5/5 by ear, 4 of them local. No `es-MX` voice is exposed (only `es-ES`, `es-US`, `es`).
+  - `confidence` is not informative (about 0.95 even for a wrong transcript). Transcripts lack punctuation and have inconsistent capitalization.
+  - The voice list is likely device-specific (inferred). One speaker, 5 phrases, subjective ratings.
+- Spanish speech recognition and speech synthesis quality via the Web Speech API on iPhone, iPad, and MacBook.
+- Web Speech behavior offline. Chrome recognition is believed to need a network service (inferred); all Chromebook attempts were online.
 - Gemini free-tier limits for this account (not published in the public docs; check AI Studio) and Gemini's Spanish quality at A1 level. Free-tier content may be used by Google to improve its products.
 - iOS/Safari behavior: browser storage eviction, and audio playback requiring a user tap.
 - Whether a free GitHub plan can publish Pages from a private repo.
