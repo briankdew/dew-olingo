@@ -25,7 +25,7 @@ Voices: es-MX Paulina (compact 5, super-compact 4); es-ES Mónica (compact 2, su
 
 Permissions: the home-screen app has its own mic permission. User report: its prompt appeared only after mic access was turned off for Safari proper.
 
-Not tested: iPad; continuous sessions longer than about 2.5 minutes; TTS with AirPods; Silent Mode effects on speaker audio (the user's reports were unclear); a held mic stream (E3).
+Not tested: continuous sessions longer than about 2.5 minutes; TTS with AirPods; Silent Mode effects on speaker audio (the user's reports were unclear); a held mic stream (E3).
 
 ## iPad Safari speech findings (2026-10-20)
 
