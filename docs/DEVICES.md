@@ -4,7 +4,7 @@ This content comes from an earlier verification spike.
 
 - Chromebook (Chrome): Web Speech API works for es-MX (5/5 phrases; 4/5 on the first try, 5/5 with one retry). 24 Spanish voices; no native es-MX voice.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
-- Not yet tested: MacBook Safari, offline behavior, GitHub Contents API CORS, Gemini API.
+- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, GitHub Contents API CORS, Gemini API.
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
 

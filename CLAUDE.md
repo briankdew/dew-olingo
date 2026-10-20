@@ -10,7 +10,7 @@ Personal web app for learning Spanish from a very basic starting level. Multimod
 
 - Completely static, client-side app deployed on GitHub Pages. No server-side infrastructure of any kind (no Python, Flask, Node, or other backend).
 - Zero cost to develop and use.
-- Must work on iPhone, iPad, MacBook, and Chromebook. Development happens on a Chromebook (Linux/Crostini).
+- First release targets Chromebook, iPhone, and iPad (the devices tested so far). MacBook is deferred: not required for the first release, but kept as a candidate platform for later. Development happens on a Chromebook (Linux/Crostini).
 
 ## Locked stack (ask before changing any of this)
 
@@ -41,7 +41,7 @@ Do not assume any of these work. Test them and report the result as verified or 
   - Synthesis: 24 Spanish voices, 7 rated 5/5 by ear, 4 of them local. No `es-MX` voice is exposed (only `es-ES`, `es-US`, `es`).
   - `confidence` is not informative (about 0.95 even for a wrong transcript). Transcripts lack punctuation and have inconsistent capitalization.
   - The voice list is likely device-specific (inferred). One speaker, 5 phrases, subjective ratings.
-- Spanish speech recognition and speech synthesis quality via the Web Speech API on iPhone, iPad, and MacBook.
+- Spanish speech recognition and speech synthesis via the Web Speech API on MacBook (deferred; not required for the first release). iPhone and iPad results are recorded in docs/DEVICES.md.
 - Web Speech behavior offline. Chrome recognition is believed to need a network service (inferred); all Chromebook attempts were online.
 - Gemini free-tier limits for this account (not published in the public docs; check AI Studio) and Gemini's Spanish quality at A1 level. Free-tier content may be used by Google to improve its products.
 - iOS/Safari behavior: browser storage eviction, and audio playback requiring a user tap.
@@ -86,7 +86,7 @@ Run the verification spike (the unverified items above) before building the modu
 
 ## Working rules
 
-- The app must work in Safari on iOS/iPadOS/macOS, not just Chrome. Avoid Chrome-only APIs.
+- The app must work in Safari on iOS and iPadOS, not just Chrome. Avoid Chrome-only APIs. macOS Safari is deferred with the MacBook.
 - Read `docs/DEVICES.md` before touching speech code.
 - Never commit API keys or the GitHub PAT; keys are bring-your-own via the settings UI.
 - Run available tests before declaring a task done, and update `TASKS.md`.
