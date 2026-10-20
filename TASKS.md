@@ -8,3 +8,4 @@
 - [x] `npm run typecheck`, `npm run build`, `npm test` pass locally. Playwright chromium passes locally.
 - [ ] Playwright webkit locally: fails on Crostini, missing `libmanette-0.2.so.0` (needs `sudo npx playwright install-deps webkit`). Not yet run on CI.
 - [ ] Push a branch/PR to confirm `.github/workflows/ci.yml` goes green.
+- [x] Playwright CI config: `github` + `html` reporters and `trace: 'retain-on-failure'` in CI only (branch `cleanup-test-config`).
