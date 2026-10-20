@@ -83,3 +83,10 @@ dew-olingo/
 ## Next step
 
 Run the verification spike (the unverified items above) before building the modules.
+
+## Working rules
+
+- The app must work in Safari on iOS/iPadOS/macOS, not just Chrome. Avoid Chrome-only APIs.
+- Read `docs/DEVICES.md` before touching speech code.
+- Never commit API keys or the GitHub PAT; keys are bring-your-own via the settings UI.
+- Run available tests before declaring a task done, and update `TASKS.md`.
