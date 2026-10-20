@@ -4,7 +4,8 @@ This content comes from an earlier verification spike.
 
 - Chromebook (Chrome): Web Speech API works for es-MX (5/5 phrases; 4/5 on the first try, 5/5 with one retry). 24 Spanish voices; no native es-MX voice.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
-- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, GitHub Contents API CORS, Gemini API.
+- GitHub Contents API CORS: see 'GitHub Contents API CORS' below. Server headers and Chromium preflight are verified; the PAT-authenticated read/write is unverified.
+- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini API.
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
 
@@ -37,3 +38,26 @@ Device: iPad 10th generation. User-reported iOS 27; the page's user agent string
 - Voices: 2 Spanish voices at first load (Mónica es-ES and Paulina es-MX, both super-compact, 69 total); the list later grew to 4 (compact versions added, 71 total). Voice quality rated by one listener: Paulina super-compact 5, Mónica super-compact 1. Compact variants not played.
 
 Not tested: home-screen mode on iPad; TTS before any recognition; continuous sessions longer than about 2 minutes.
+
+## GitHub Contents API CORS (2026-10-20)
+
+Question: can a page on `https://briankdew.github.io` call `api.github.com` (Contents API) from the browser, including the preflight for an authenticated PUT?
+
+**Verified (curl, Origin `https://briankdew.github.io`, no PAT):**
+- `OPTIONS` preflight for PUT (request headers `authorization,content-type,x-github-api-version`): HTTP 204, `access-control-allow-origin: *`, `access-control-allow-methods: GET, POST, PATCH, PUT, DELETE`, `access-control-allow-headers` includes `Authorization`, `Content-Type`, `If-Match`, `X-GitHub-Api-Version`. `access-control-max-age: 86400`. The GET preflight is identical.
+- Unauthenticated GET of a public repo file: HTTP 200 with `access-control-allow-origin: *`.
+- PUT with a dummy token to a nonexistent repo: HTTP 401 `Bad credentials`, still with `access-control-allow-origin: *`. Error responses are readable cross-origin.
+- `access-control-expose-headers` includes `ETag`, `Retry-After`, `X-RateLimit-*`.
+- curl shows what the server sends, not what a browser enforces.
+
+**Verified (Playwright Chromium, opt-in `e2e/github-cors.spec.ts`, page origin stubbed as `https://briankdew.github.io`, dummy token):**
+- GET with `Authorization`: JS reads status 401.
+- PUT with `Authorization`, `Content-Type: application/json`, `X-GitHub-Api-Version`: preflight passes, JS reads 401 `Bad credentials`.
+
+**Unverified:**
+- Playwright WebKit: fails to launch on Crostini (missing `libmanette-0.2.so.0`); the spec is not run in CI (opt-in, external network). Playwright WebKit is not iOS Safari anyway.
+- Fine-grained PAT scoped to one private repo: read and write of contents, `sha` update flow, 409 on a stale `sha`. Needs a real PAT in a real browser.
+- iPhone Safari, iPad Safari, home-screen app (ITP, content blockers).
+- The `*` Allow-Origin is inferred to be sufficient because requests use no cookies (fetch `credentials` default). Not tested with `credentials: 'include'`, which the app should not use.
+
+To finish: use `public/cors-probe.html` (temporary, remove after use) at `https://briankdew.github.io/dew-olingo/cors-probe.html` after merge and deploy.
