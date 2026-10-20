@@ -4,7 +4,7 @@ This content comes from an earlier verification spike.
 
 - Chromebook (Chrome): Web Speech API works for es-MX (5/5 phrases; 4/5 on the first try, 5/5 with one retry). 24 Spanish voices; no native es-MX voice.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
-- Not yet tested: MacBook Safari, iPad, offline behavior, GitHub Contents API CORS, Gemini API.
+- Not yet tested: MacBook Safari, offline behavior, GitHub Contents API CORS, Gemini API.
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
 
@@ -26,3 +26,14 @@ Voices: es-MX Paulina (compact 5, super-compact 4); es-ES Mónica (compact 2, su
 Permissions: the home-screen app has its own mic permission. User report: its prompt appeared only after mic access was turned off for Safari proper.
 
 Not tested: iPad; continuous sessions longer than about 2.5 minutes; TTS with AirPods; Silent Mode effects on speaker audio (the user's reports were unclear); a held mic stream (E3).
+
+## iPad Safari speech findings (2026-10-20)
+
+Device: iPad 10th generation. User-reported iOS 27; the page's user agent string reports Safari 27.0 and a Macintosh platform (iPadOS reports as Mac). Tested in a Safari tab only, on the device mic and speaker.
+
+- Safari exposes webkitSpeechRecognition and speechSynthesis. Mic permission started as "prompt", then granted.
+- Continuous session (continuous=true, no stop between phrases), es-MX, no TTS: 5/5 phrases captured, final confidence 0.986-0.998, no errors.
+- Continuous session, es-MX, with TTS: phrases 1 and 2 captured; after Paulina (super-compact) played, phrases 3-5 produced no events at all (not even speechstart), and the user had to tap Done each time (20-24 s). Same silent failure as iPhone trial 1. Working assumption (unproven, one trial): TTS playback breaks the live recognition session; start a fresh session after each playback and add a watchdog timer.
+- Voices: 2 Spanish voices at first load (Mónica es-ES and Paulina es-MX, both super-compact, 69 total); the list later grew to 4 (compact versions added, 71 total). Voice quality rated by one listener: Paulina super-compact 5, Mónica super-compact 1. Compact variants not played.
+
+Not tested: home-screen mode on iPad; TTS before any recognition; continuous sessions longer than about 2 minutes.
