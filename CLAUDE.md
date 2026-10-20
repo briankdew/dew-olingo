@@ -90,3 +90,4 @@ Run the verification spike (the unverified items above) before building the modu
 - Read `docs/DEVICES.md` before touching speech code.
 - Never commit API keys or the GitHub PAT; keys are bring-your-own via the settings UI.
 - Run available tests before declaring a task done, and update `TASKS.md`.
+- Test commands: `npm run typecheck`, `npm test` (Vitest), `npm run test:e2e` (builds, then Playwright).
