@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>GitHub CORS probe (temporary)</title>
+<style>
+  body { font: 16px system-ui, sans-serif; max-width: 40rem; margin: 1rem auto; padding: 0 1rem; }
+  input, button { font: inherit; padding: .5rem; margin: .25rem 0; width: 100%; box-sizing: border-box; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #eee; color: #000; padding: .5rem; }
+</style>
+</head>
+<body>
+<h1>GitHub Contents API probe</h1>
+<p>Temporary page. Use a throwaway <b>private</b> repo and a fine-grained PAT scoped to that repo only (Contents: read and write). The token stays in this field in memory: it is not stored, logged, or printed. Revoke the PAT afterwards.</p>
+<label>Repo (owner/name) <input id="repo" autocapitalize="none" autocorrect="off" placeholder="briankdew/cors-probe-private"></label>
+<label>PAT <input id="pat" type="password" autocomplete="off"></label>
+<button id="run">Run probe</button>
+<pre id="out">Not run.</pre>
+<script>
+const out = document.getElementById('out')
+const lines = []
+const log = (s) => { lines.push(s); out.textContent = lines.join('\n') }
+
+async function call(label, url, init) {
+  try {
+    const res = await fetch(url, init)
+    let body = null
+    try { body = await res.json() } catch (e) {}
+    log(label + ': JS read response, HTTP ' + res.status + (body && body.message ? ' (' + body.message + ')' : ''))
+    return { res, body }
+  } catch (e) {
+    log(label + ': FETCH THREW (' + e + ') -> CORS or network failure')
+    return null
+  }
+}
+
+document.getElementById('run').addEventListener('click', async () => {
+  lines.length = 0
+  log('Origin: ' + location.origin + ' | UA: ' + navigator.userAgent)
+  const repo = document.getElementById('repo').value.trim()
+  const pat = document.getElementById('pat').value.trim()
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !pat) { log('Enter repo and PAT.'); return }
+  const url = 'https://api.github.com/repos/' + repo + '/contents/cors-probe.json'
+  const auth = { Authorization: 'Bearer ' + pat, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
+  const put = (obj, sha) => ({
+    method: 'PUT',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'cors probe', content: btoa(JSON.stringify(obj)), ...(sha ? { sha } : {}) }),
+  })
+
+  let r = await call('1 GET existing (404 is fine on first run)', url, { headers: auth })
+  const existingSha = r && r.res.status === 200 ? r.body.sha : undefined
+  r = await call('2 PUT ' + (existingSha ? 'update' : 'create'), url, put({ t: Date.now(), n: 1 }, existingSha))
+  const sha = r && r.body && r.body.content && r.body.content.sha
+  if (!sha) { log('No sha returned; stopping.'); return }
+  r = await call('3 PUT update with sha', url, put({ t: Date.now(), n: 2 }, sha))
+  await call('4 PUT with stale sha (expect 409)', url, put({ t: Date.now(), n: 3 }, sha))
+  r = await call('5 GET final', url, { headers: auth })
+  log('Done. Revoke the PAT.')
+})
+</script>
+</body>
+</html>
