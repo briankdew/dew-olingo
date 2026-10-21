@@ -5,7 +5,8 @@ This content comes from an earlier verification spike.
 - Chromebook (Chrome): Web Speech API works for es-MX (5/5 phrases; 4/5 on the first try, 5/5 with one retry). 24 Spanish voices; no native es-MX voice.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
 - GitHub Contents API CORS: see 'GitHub Contents API CORS' below. Verified 2026-10-21 with a real PAT on Chromebook, iPhone, and iPad (see below).
-- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini API.
+- Gemini API CORS: see 'Gemini API CORS' below. Preflight verified with a dummy key only; real key not yet tested.
+- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini API success path and Spanish quality (see 'Gemini API CORS').
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
 
@@ -65,3 +66,26 @@ Question: can a page on `https://briankdew.github.io` call `api.github.com` (Con
 - Result: all steps succeeded and the stale-`sha` write returned a readable HTTP 409 on Chromebook Chrome 154, iPhone Safari 27.2 (iOS UA 18.7), and iPad Safari 27.0, each in a Safari tab, plus the iPad and iPhone home-screen apps.
 - Caveats: the home-screen runs are user-reported, since the probe did not log display mode. Not tested: long idle periods, large files, rate limits, offline behavior.
 - The throwaway PAT was deleted. The temporary probe page was removed from the repo.
+
+## Gemini API CORS and limits (2026-10-21)
+
+Question: can a page on `https://briankdew.github.io` call `generativelanguage.googleapis.com` with a user-supplied key?
+
+**Verified (curl, Origin `https://briankdew.github.io`, dummy key `DUMMY_KEY_NOT_REAL`):**
+- `OPTIONS` preflight for POST to `/v1beta/models/<model>:generateContent`: HTTP 200, `access-control-allow-origin: https://briankdew.github.io` (the origin is echoed, not `*`), `allow-methods: DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT`, `allow-headers` echoes `content-type,x-goog-api-key`, `max-age: 3600`. Same for `?key=` auth with `content-type` only.
+- POST with the dummy key, both auth styles: HTTP 400 `API_KEY_INVALID`, with Allow-Origin present, so error bodies are readable cross-origin.
+- curl shows what the server sends, not what a browser enforces.
+
+**Verified (Playwright Chromium, opt-in `e2e/gemini-cors.spec.ts`, page origin stubbed as `https://briankdew.github.io`, dummy key):** POST with `x-goog-api-key` and JSON body: preflight passes and JS reads status 400 and `API_KEY_INVALID`.
+
+**Unverified:**
+- Playwright WebKit: fails to launch on Crostini (missing `libmanette-0.2.so.0`); not iOS Safari anyway.
+- Anything needing a real key: the 200 success path, whether the key's `github.io` HTTP-referrer restriction accepts browser calls, and Spanish (es-MX) quality at A1 level. Pending the user's run of `public/gemini-probe.html` on Chromebook, iPhone, and iPad.
+- iPhone Safari, iPad Safari, home-screen app (ITP, content blockers).
+- `GET /v1beta/models` needs a valid key (dummy key returns 400), so model IDs below come from the docs, not from the API.
+
+**Free-tier limits (documented, fetched 2026-10-21):**
+- https://ai.google.dev/gemini-api/docs/rate-limits : no free-tier RPM/TPM/RPD figures are published. The page says to view active limits in Google AI Studio. Limits are applied per project, not per API key; daily quotas reset at midnight Pacific; "Specified rate limits are not guaranteed"; limits change automatically with tier and account status; preview/experimental models are stricter. The exact numbers for this account are unverified: check AI Studio.
+- https://ai.google.dev/gemini-api/docs/pricing : every text Flash and Flash-Lite model listed has a free tier ("Free of charge"). The "Used to improve our products" row is Yes for the free tier and No for the paid tier.
+- https://ai.google.dev/gemini-api/docs/models : stable Flash-class IDs `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`; `gemini-3-flash-preview` is preview; `gemini-2.5-flash` and `-lite` are not deprecated but limited to users who have used them before; `gemini-2.0-flash` and `-lite` are shut down. No shutdown dates for Flash-class models on that page.
+- The page content came through a summarizing fetch tool, not a raw read; confirm the figures in the docs before relying on them.

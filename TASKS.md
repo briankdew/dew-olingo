@@ -18,3 +18,13 @@
 - [x] Real PAT, private repo, read/write/update/409 via the temporary probe page on Chromebook, iPhone, iPad. Verified 2026-10-21 (home-screen runs user-reported).
 - [x] After the PAT test: removed `public/cors-probe.html`; updated the CLAUDE.md "Unverified" item.
 
+
+## Gemini API spike (2026-10-21)
+- [x] curl: preflight from `https://briankdew.github.io` for POST `:generateContent` passes for header auth (`x-goog-api-key`) and `?key=` auth. Verified (server headers only).
+- [x] curl: 400 `API_KEY_INVALID` error bodies carry Allow-Origin. Verified.
+- [x] Playwright Chromium (opt-in `GEMINI_PROBE=1`, `e2e/gemini-cors.spec.ts`, stubbed github.io origin, dummy key): preflight passes, JS reads the 400. Verified.
+- [ ] Playwright WebKit: not run locally (`libmanette`); spec is not run in CI by design.
+- [x] Free-tier limits: documented figures do not exist publicly; docs point to AI Studio (see docs/DEVICES.md).
+- [x] Wrote `public/gemini-probe.html` (key in memory only; header auth; 5 single-turn prompts plus one two-turn exchange). Smoke-tested against a mocked Gemini in Chromium: key only in the header, no storage, no other hosts, turn 2 sends full history.
+- [ ] Real key on the real origin: success path, es-MX quality, and the `github.io` referrer restriction, on Chromebook, iPhone, iPad. Needs the user, after merge (Pages deploys from main).
+- [ ] Follow-up PR: remove `public/gemini-probe.html` and record the user's results.

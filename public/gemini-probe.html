@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="origin">
+<title>Gemini probe (temporary)</title>
+<style>
+  body { font: 16px/1.4 system-ui, sans-serif; margin: 0 auto; max-width: 42rem; padding: 1rem; }
+  label { display: block; margin-top: .75rem; font-weight: 600; }
+  input, button { font: inherit; padding: .5rem; width: 100%; box-sizing: border-box; }
+  button { margin-top: .75rem; }
+  .row { display: flex; gap: .5rem; }
+  .row > * { flex: 1; }
+  .case { border: 1px solid #8886; border-radius: .5rem; padding: .75rem; margin-top: 1rem; }
+  .meta { font-size: .85rem; opacity: .75; word-break: break-word; }
+  .reply { white-space: pre-wrap; margin: .25rem 0 .5rem; }
+  .user { opacity: .8; }
+  .bad { color: #b00020; }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: .8rem; }
+</style>
+</head>
+<body>
+<h1>Gemini probe (temporary)</h1>
+<p>Your key stays in memory in this tab only. It is not stored, logged, or put in a URL. It is sent only to <code>generativelanguage.googleapis.com</code>, in the <code>x-goog-api-key</code> header. Prompts and replies may be used by Google on the free tier: nothing private here.</p>
+<pre id="env"></pre>
+
+<label for="key">Gemini API key</label>
+<input id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+<label for="model">Model ID</label>
+<input id="model" list="models" value="gemini-3.6-flash" autocapitalize="off" spellcheck="false">
+<datalist id="models">
+  <option value="gemini-3.8-flash"></option>
+  <option value="gemini-3.6-flash"></option>
+  <option value="gemini-3.5-flash-lite"></option>
+  <option value="gemini-3.1-flash-lite"></option>
+  <option value="gemini-2.5-flash"></option>
+  <option value="gemini-2.5-flash-lite"></option>
+</datalist>
+<div class="row">
+  <button id="run">Run all</button>
+  <button id="clear" type="button">Clear key</button>
+</div>
+<div id="out"></div>
+
+<script>
+'use strict'
+const HOST = 'https://generativelanguage.googleapis.com'
+const SYSTEM = 'You are a friendly Spanish tutor for an absolute beginner (CEFR A1). Reply in Mexican Spanish (es-MX) using short, simple sentences and basic vocabulary. Give a short English gloss in parentheses only when it helps.'
+
+// Each case is a list of user turns. Later turns are sent with the full history.
+const CASES = [
+  { name: 'Greeting and name', turns: ['Hola, me llamo Brian. ¿Cómo te llamas?'] },
+  { name: 'Ordering tacos', turns: ['Quiero pedir tacos en un restaurante. Tú eres el mesero. Empieza.'] },
+  { name: 'Asking directions', turns: ['Estoy perdido. ¿Dónde está el baño, por favor? Tú eres una persona en la calle.'] },
+  { name: 'Correction', turns: ['Yo tiene hambre. ¿Está bien esta frase? Corrígela.'] },
+  { name: 'English to Spanish explanation', turns: ['Explain in simple English how to say "I would like a glass of water" in Spanish, and why.'] },
+  { name: 'Two-turn exchange (turn 2 depends on turn 1)', turns: [
+    'Hola, buenos días.',
+    'Estoy bien, gracias. ¿Puedes repetir tu última pregunta más despacio?',
+  ] },
+]
+
+const $ = (id) => document.getElementById(id)
+const dm = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find((m) => matchMedia('(display-mode: ' + m + ')').matches)
+$('env').textContent = 'origin: ' + location.origin + '\ndisplay-mode: ' + dm + '\nnavigator.standalone: ' + navigator.standalone + '\nUA: ' + navigator.userAgent
+
+function redact(s, key) {
+  s = String(s)
+  return key ? s.split(key).join('[key]') : s
+}
+
+function add(parent, cls, text) {
+  const d = document.createElement('div')
+  d.className = cls
+  d.textContent = text
+  parent.appendChild(d)
+  return d
+}
+
+async function send(key, model, history) {
+  const t0 = performance.now()
+  try {
+    const res = await fetch(HOST + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents: history }),
+    })
+    const ms = Math.round(performance.now() - t0)
+    let json = null
+    try { json = await res.json() } catch (e) { /* non-JSON body */ }
+    const parts = json?.candidates?.[0]?.content?.parts ?? []
+    const text = parts.filter((p) => !p.thought && p.text).map((p) => p.text).join('')
+    const err = json?.error ? JSON.stringify(json.error, null, 1) : ''
+    return { status: res.status, ms, text, err, usage: json?.usageMetadata, finish: json?.candidates?.[0]?.finishReason, retryAfter: res.headers.get('retry-after') }
+  } catch (e) {
+    return { status: 'network/CORS error', ms: Math.round(performance.now() - t0), text: '', err: String(e), usage: null }
+  }
+}
+
+async function runAll() {
+  const key = $('key').value.trim()
+  const model = $('model').value.trim()
+  const out = $('out')
+  out.textContent = ''
+  if (!key || !model) { add(out, 'bad', 'Enter a key and a model ID.'); return }
+  $('run').disabled = true
+  for (const c of CASES) {
+    const box = add(out, 'case', '')
+    add(box, 'meta', c.name)
+    const history = []
+    for (const u of c.turns) {
+      history.push({ role: 'user', parts: [{ text: u }] })
+      add(box, 'user', 'You: ' + u)
+      const r = await send(key, model, history)
+      const ok = r.status === 200
+      add(box, 'meta' + (ok ? '' : ' bad'), 'HTTP ' + r.status + ' · ' + r.ms + ' ms' + (r.finish ? ' · finish ' + r.finish : '') + (r.retryAfter ? ' · retry-after ' + r.retryAfter : ''))
+      if (r.text) add(box, 'reply', redact(r.text, key))
+      if (r.err) add(box, 'bad', redact(r.err, key))
+      if (r.usage) add(box, 'meta', 'usage: ' + JSON.stringify(r.usage))
+      if (!ok || !r.text) break
+      history.push({ role: 'model', parts: [{ text: r.text }] })
+    }
+  }
+  $('run').disabled = false
+}
+
+$('run').addEventListener('click', runAll)
+$('clear').addEventListener('click', () => { $('key').value = ''; $('out').textContent = '' })
+</script>
+</body>
+</html>
