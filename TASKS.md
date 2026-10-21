@@ -39,3 +39,22 @@
 - [x] (partial) Speech offline: Chromebook verified (STT fails, local TTS works); iPhone PROBABLE (user-reported). NOT done: iPad.
 - [ ] iOS storage eviction: not tested (needs days; optional day-8 reopen if the probe stays deployed).
 - [x] Removal PR: probe and spec deleted, results recorded in docs/DEVICES.md and CLAUDE.md.
+
+
+## v1 milestones (see SPEC.md for criteria)
+- [ ] M0 Shell and deploy (spike speech page kept at hidden route until M3)
+- [ ] M1 Data layer
+- [ ] M2 Settings and LLM service
+- [ ] M3 Speech services (delete `src/spike/`)
+- [ ] M4 SRS core and seed content
+- [ ] M5 Scaffolding UI I
+- [ ] M6 Offline app-shell caching
+- [ ] M7 Scaffolding UI II
+- [ ] M8 Input Sandbox I
+- [ ] M9 Input Sandbox II
+- [ ] M10 Roleplay
+- [ ] M11 Sync
+- [ ] M12 Hardening and release
+
+## Spec (2026-10-21)
+- [x] Interview and SPEC.md written; CLAUDE.md "Next step" points to SPEC.md and TASKS.md.
