@@ -4,7 +4,7 @@ This content comes from an earlier verification spike.
 
 - Chromebook (Chrome): Web Speech API works for es-MX (5/5 phrases; 4/5 on the first try, 5/5 with one retry). 24 Spanish voices; no native es-MX voice.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
-- GitHub Contents API CORS: see 'GitHub Contents API CORS' below. Server headers and Chromium preflight are verified; the PAT-authenticated read/write is unverified.
+- GitHub Contents API CORS: see 'GitHub Contents API CORS' below. Verified 2026-10-21 with a real PAT on Chromebook, iPhone, and iPad (see below).
 - Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini API.
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
@@ -60,4 +60,8 @@ Question: can a page on `https://briankdew.github.io` call `api.github.com` (Con
 - iPhone Safari, iPad Safari, home-screen app (ITP, content blockers).
 - The `*` Allow-Origin is inferred to be sufficient because requests use no cookies (fetch `credentials` default). Not tested with `credentials: 'include'`, which the app should not use.
 
-To finish: use `public/cors-probe.html` (temporary, remove after use) at `https://briankdew.github.io/dew-olingo/cors-probe.html` after merge and deploy.
+**Verified 2026-10-21 (real PAT, real browsers):**
+- Method: a temporary page on `https://briankdew.github.io`, run with a real fine-grained PAT scoped to one throwaway private repo (Contents: read/write). Sequence per run: GET existing, PUT update, PUT update with `sha`, PUT with a stale `sha`, final GET.
+- Result: all steps succeeded and the stale-`sha` write returned a readable HTTP 409 on Chromebook Chrome 154, iPhone Safari 27.2 (iOS UA 18.7), and iPad Safari 27.0, each in a Safari tab, plus the iPad and iPhone home-screen apps.
+- Caveats: the home-screen runs are user-reported, since the probe did not log display mode. Not tested: long idle periods, large files, rate limits, offline behavior.
+- The throwaway PAT was deleted. The temporary probe page was removed from the repo.
