@@ -42,7 +42,7 @@
 
 
 ## v1 milestones (see SPEC.md for criteria)
-- [ ] M0 Shell and deploy (spike speech page kept at hidden route until M3)
+- [x] M0 Shell and deploy (react-router HashRouter; speech test page kept at `#/spike/speech` until M3; [A] done, [D] device check on the Pages URL still to run)
 - [ ] M1 Data layer
 - [ ] M2 Settings and LLM service
 - [ ] M3 Speech services (delete `src/spike/`)
