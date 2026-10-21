@@ -6,7 +6,7 @@ This content comes from an earlier verification spike.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
 - GitHub Contents API CORS: see 'GitHub Contents API CORS' below. Verified 2026-10-21 with a real PAT on Chromebook, iPhone, and iPad (see below).
 - Gemini API: see 'Gemini API CORS and limits' below. Verified 2026-10-21 with a real free-tier key on Chromebook, iPhone, and iPad (user-run; see below).
-- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini free-tier rate limits.
+- Not yet tested: MacBook Safari (deferred; not required for the first release), Gemini free-tier rate limits. Offline behavior is recorded below (partial).
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
 
@@ -64,7 +64,7 @@ Question: can a page on `https://briankdew.github.io` call `api.github.com` (Con
 **Verified 2026-10-21 (real PAT, real browsers):**
 - Method: a temporary page on `https://briankdew.github.io`, run with a real fine-grained PAT scoped to one throwaway private repo (Contents: read/write). Sequence per run: GET existing, PUT update, PUT update with `sha`, PUT with a stale `sha`, final GET.
 - Result: all steps succeeded and the stale-`sha` write returned a readable HTTP 409 on Chromebook Chrome 154, iPhone Safari 27.2 (iOS UA 18.7), and iPad Safari 27.0, each in a Safari tab, plus the iPad and iPhone home-screen apps.
-- Caveats: the home-screen runs are user-reported, since the probe did not log display mode. Not tested: long idle periods, large files, rate limits, offline behavior.
+- Caveats: the home-screen runs are user-reported, since the probe did not log display mode. Not tested: long idle periods, large files, rate limits. (Offline behavior was tested separately; see "Offline behavior (2026-10-21)".)
 - The throwaway PAT was deleted. The temporary probe page was removed from the repo.
 
 ## Gemini API CORS and limits (2026-10-21)
@@ -93,7 +93,7 @@ Question: can a page on `https://briankdew.github.io` call `generativelanguage.g
 - Free-tier content may be used by Google to improve its products.
 - Quality is one AI judgment of a few prompts, not a native speaker's.
 - Playwright WebKit: fails to launch on Crostini (missing `libmanette-0.2.so.0`); not iOS Safari anyway.
-- Offline behavior; long idle periods.
+- Long idle periods. (Offline behavior: see "Offline behavior (2026-10-21)".)
 - `GET /v1beta/models` needs a valid key (dummy key returns 400), so model IDs below come from the docs, not from the API.
 
 **Free-tier limits (documented, fetched 2026-10-21):**
@@ -101,3 +101,25 @@ Question: can a page on `https://briankdew.github.io` call `generativelanguage.g
 - https://ai.google.dev/gemini-api/docs/pricing : every text Flash and Flash-Lite model listed has a free tier ("Free of charge"). The "Used to improve our products" row is Yes for the free tier and No for the paid tier.
 - https://ai.google.dev/gemini-api/docs/models : stable Flash-class IDs `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`; `gemini-3-flash-preview` is preview; `gemini-2.5-flash` and `-lite` are not deprecated but limited to users who have used them before; `gemini-2.0-flash` and `-lite` are shut down. No shutdown dates for Flash-class models on that page.
 - The page content came through a summarizing fetch tool, not a raw read; confirm the figures in the docs before relying on them.
+
+## Offline behavior (2026-10-21)
+
+Method: a temporary probe at `https://briankdew.github.io/dew-olingo/offline-probe/` (own narrow-scope service worker, raw IndexedDB, speech buttons). The probe was removed from the repo afterwards.
+
+**Chromebook Chrome 154 (tab), offline - verified:**
+- The shell loaded from the service worker cache (2 ms).
+- Uncached and real-app fetches failed fast, so the worker serves only probe files.
+- IndexedDB persisted (6 records, 2 manual). The log does not show a full browser restart.
+- Local TTS (Chrome OS español 1, es-ES) worked.
+- STT failed with error "network" about 0.3 s after start.
+- No es-MX voice and no non-local es voice.
+
+**iPhone Safari 27.2 (iOS UA 18.7), normal tab:**
+- Online (user-reported): cache and IndexedDB survived reloads and a force-quit, and were still present about 1.5 h later (first write 19:12:11 UTC; 21 records at 20:45 UTC).
+- A private tab discards all site data when closed (observed by mistake in an earlier run; not a finding about normal tabs).
+- Offline - PROBABLE, user-reported, not directly logged: Add record, local es-MX TTS (Paulina) and STT (returned "Hola cómo estás", confidence 0.997) all worked, with the probe loaded from cache.
+- Caveats: `navigator.onLine` stayed true throughout (unreliable on iOS). The offline window comes from the user's timing and from no "checks" line appearing 40+ s after page load, against a baseline of about 0.1 s online. Two identical STT "result" events appeared where online runs had one (cause unknown). Not known whether recognition ran on-device.
+
+**Observation:** the user's always-on VPN blocks non-VPN traffic, so offline requests hang for minutes (uncached fetch 187 s and 277 s) instead of failing fast. With the VPN off, Safari reported "not connected to the internet" immediately. The app should use its own timeouts and must not rely on `navigator.onLine`.
+
+**Not tested:** iPad (any mode); home-screen app offline on any device; iOS storage eviction over 8+ days (`persisted()` was false); Dexie; Workbox or `vite-plugin-pwa`.
