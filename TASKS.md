@@ -29,3 +29,13 @@
 - [x] Real key on the real origin: success path and es-MX quality verified on Chromebook, iPhone, iPad (user-run, home-screen via `navigator.standalone`). The `github.io` referrer restriction is not confirmed.
 - [ ] Free-tier rate limits for this account: unverified (check AI Studio).
 - [x] Follow-up PR: removed `public/gemini-probe.html` and recorded the results in docs/DEVICES.md and CLAUDE.md.
+
+
+## Offline spike (2026-10-21)
+- [x] Probe `public/offline-probe/` (own narrow-scope SW, raw IndexedDB, speech buttons, "Unregister and clear"). Hand-written SW, no new dependency: Workbox/`vite-plugin-pwa` and Dexie specifics are NOT covered.
+- [x] Playwright Chromium (`e2e/offline-probe.spec.ts`, `context.setOffline`): shell loads offline after one online visit; SW scope is the probe directory only and the real app is not served by it; IndexedDB survives offline writes, reload, new page, and a full browser restart (persistent profile); reset removes SW, caches, DB; nothing leaves localhost. Proves Chromium mechanics only.
+- [ ] Playwright WebKit: spec skipped by design (not iOS Safari; also `libmanette` locally).
+- [ ] Real devices, airplane mode: Chromebook tab; iPhone and iPad Safari tab and home-screen app. Shell offline, IDB after force-quit and relaunch, `persisted()`/`estimate()`.
+- [ ] Speech offline (STT and local-voice TTS) on all devices. Not provable in Playwright.
+- [ ] iOS storage eviction: not tested (needs days; optional day-8 reopen if the probe stays deployed).
+- [ ] Removal PR: every device taps "Unregister and clear" first; then delete the probe and spec, record results in docs/DEVICES.md and CLAUDE.md.
