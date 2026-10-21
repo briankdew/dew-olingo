@@ -15,6 +15,6 @@
 - [x] curl: 401 error response carries Allow-Origin. Verified.
 - [x] Playwright Chromium (opt-in `CORS_PROBE=1`, `e2e/github-cors.spec.ts`): GET and PUT with `Authorization` pass CORS, JS reads the 401. Verified.
 - [ ] Playwright WebKit: not run locally (`libmanette`, same as above); spec is not run in CI by design.
-- [ ] Real PAT, private repo, read/write/update/409 via `public/cors-probe.html` on Chromebook, iPhone, iPad. UNVERIFIED (needs the user).
-- [ ] After the PAT test: remove `public/cors-probe.html`; update the CLAUDE.md "Unverified" item.
+- [x] Real PAT, private repo, read/write/update/409 via the temporary probe page on Chromebook, iPhone, iPad. Verified 2026-10-21 (home-screen runs user-reported).
+- [x] After the PAT test: removed `public/cors-probe.html`; updated the CLAUDE.md "Unverified" item.
 

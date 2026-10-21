@@ -35,7 +35,10 @@ Personal web app for learning Spanish from a very basic starting level. Multimod
 
 Do not assume any of these work. Test them and report the result as verified or failed.
 
-- Authenticated browser calls from a `github.io` origin to `api.github.com`, including read and write of a private repo's contents with a fine-grained PAT (CORS and permissions).
+- **VERIFIED 2026-10-21:** Authenticated browser calls from `https://briankdew.github.io` to `api.github.com`, including read and write of a private repo's contents with a fine-grained PAT (CORS and permissions).
+  - Method: temporary page, real PAT scoped to one throwaway private repo (Contents: read/write). Per run: GET existing, PUT update, PUT update with sha, PUT with stale sha, final GET.
+  - Result: all steps succeeded and the stale-sha write returned a readable HTTP 409 on Chromebook Chrome 154, iPhone Safari 27.2 (iOS UA 18.7), and iPad Safari 27.0, each in a Safari tab, plus iPad and iPhone home-screen apps.
+  - Caveats: home-screen runs are user-reported (the probe did not log display mode). Not tested: long idle periods, large files, rate limits, offline behavior.
 - **VERIFIED 2026-10-19:** Spanish speech recognition and synthesis via the Web Speech API on Chromebook (HP Chromebook x360 14c, Chrome 154, online).
   - Recognition: `es-ES` 5/5 phrases correct on the first try. `es-MX` 4/5 on the first try, 5/5 with one retry. No hard errors.
   - Synthesis: 24 Spanish voices, 7 rated 5/5 by ear, 4 of them local. No `es-MX` voice is exposed (only `es-ES`, `es-US`, `es`).
