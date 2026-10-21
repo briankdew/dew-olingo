@@ -14,7 +14,7 @@ Personal web app for learning Spanish from a very basic starting level. Multimod
 
 ## Locked stack (ask before changing any of this)
 
-- **App shell:** Vite + React + TypeScript, hash routing. No `vite-plugin-pwa`; offline caching is a hand-written service worker that caches the app shell only (SPEC.md, milestone M6).
+- **App shell:** Vite + React + TypeScript, hash routing. Offline caching: the service-worker approach (hand-written vs `vite-plugin-pwa`) is decided at M6 planning time (SPEC.md).
 - **Hosting:** GitHub Pages, deployed by GitHub Actions.
 - **Local data:** Dexie.js (IndexedDB) plus manual JSON export/import.
 - **Cloud sync:** a separate private GitHub repo holding a data file, read and written from the browser via the GitHub Contents API with a fine-grained PAT scoped to that repo only. Not a Gist (gists are never private).
@@ -48,7 +48,7 @@ Do not assume any of these work. Test them and report the result as verified or 
 - Web Speech and storage behavior offline.
   - **VERIFIED 2026-10-21 (Chromebook Chrome 154, tab):** STT fails offline with error "network" (about 0.3 s after start); local TTS works (es-ES voice; no es-MX voice); IndexedDB persists; the probe shell loaded from the service worker cache.
   - **PROBABLE (iPhone Safari 27.2, tab; user-reported, not directly logged):** Add record, local es-MX TTS and STT all worked offline. `navigator.onLine` stayed true (unreliable on iOS); not known whether recognition ran on-device.
-  - Unverified: iPad (any mode), home-screen app offline on any device, Dexie, a service worker for the app shell. An always-on VPN made offline requests hang for minutes instead of failing, so the app needs its own timeouts. Details in docs/DEVICES.md.
+  - Unverified: iPad (any mode), home-screen app offline on any device, Dexie, service-worker caching (approach decided at M6 planning time). An always-on VPN made offline requests hang for minutes instead of failing, so the app needs its own timeouts. Details in docs/DEVICES.md.
 - **VERIFIED 2026-10-21:** Browser calls from `https://briankdew.github.io` to the Gemini API with a user-supplied free-tier key, including CORS and Spanish quality at A1 level.
   - Method: temporary page, real key typed into a password field, `x-goog-api-key` header, 6 es-MX A1 cases (7 calls, one two-turn).
   - Result: success path on Chromebook Chrome 154 (tab), iPhone Safari 27.2 (tab and home-screen app), iPad Safari 27.0 (tab and home-screen app). `gemini-3.5-flash-lite`: 35 calls across 5 runs, all HTTP 200, no thinking tokens, typically 0.6-2.0 s (3 slow calls: 11, 14.5, 25 s). `gemini-3.6-flash`: 4.6-37.7 s, 2 of 6 calls HTTP 503 "high demand", 473-728 hidden thinking tokens per success.
