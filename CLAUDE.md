@@ -45,14 +45,17 @@ Do not assume any of these work. Test them and report the result as verified or 
   - `confidence` is not informative (about 0.95 even for a wrong transcript). Transcripts lack punctuation and have inconsistent capitalization.
   - The voice list is likely device-specific (inferred). One speaker, 5 phrases, subjective ratings.
 - Spanish speech recognition and speech synthesis via the Web Speech API on MacBook (deferred; not required for the first release). iPhone and iPad results are recorded in docs/DEVICES.md.
-- Web Speech behavior offline. Chrome recognition is believed to need a network service (inferred); all Chromebook attempts were online.
+- Web Speech and storage behavior offline.
+  - **VERIFIED 2026-10-21 (Chromebook Chrome 154, tab):** STT fails offline with error "network" (about 0.3 s after start); local TTS works (es-ES voice; no es-MX voice); IndexedDB persists; the probe shell loaded from the service worker cache.
+  - **PROBABLE (iPhone Safari 27.2, tab; user-reported, not directly logged):** Add record, local es-MX TTS and STT all worked offline. `navigator.onLine` stayed true (unreliable on iOS); not known whether recognition ran on-device.
+  - Unverified: iPad (any mode), home-screen app offline on any device, Dexie, Workbox/`vite-plugin-pwa`. An always-on VPN made offline requests hang for minutes instead of failing, so the app needs its own timeouts. Details in docs/DEVICES.md.
 - **VERIFIED 2026-10-21:** Browser calls from `https://briankdew.github.io` to the Gemini API with a user-supplied free-tier key, including CORS and Spanish quality at A1 level.
   - Method: temporary page, real key typed into a password field, `x-goog-api-key` header, 6 es-MX A1 cases (7 calls, one two-turn).
   - Result: success path on Chromebook Chrome 154 (tab), iPhone Safari 27.2 (tab and home-screen app), iPad Safari 27.0 (tab and home-screen app). `gemini-3.5-flash-lite`: 35 calls across 5 runs, all HTTP 200, no thinking tokens, typically 0.6-2.0 s (3 slow calls: 11, 14.5, 25 s). `gemini-3.6-flash`: 4.6-37.7 s, 2 of 6 calls HTTP 503 "high demand", 473-728 hidden thinking tokens per success.
   - Quality was judged by the AI, not a native speaker: beginner-appropriate es-MX, two-turn context worked, "Yo tiene hambre" always corrected to "tengo" but 4 of 5 lite explanations were confusing.
   - Caveats: home-screen runs identified by `navigator.standalone` (display-mode is unreliable on iOS). Model IDs came from Google's docs and may change, so make the model ID a setting. Not confirmed that the key's `github.io` referrer restriction was enforced. Details in docs/DEVICES.md.
 - Gemini free-tier limits for this account (not published in the public docs; check AI Studio; no 429 seen in 35 calls, which does not establish the limit). Free-tier content may be used by Google to improve its products.
-- iOS/Safari behavior: browser storage eviction, and audio playback requiring a user tap.
+- iOS/Safari behavior: browser storage eviction (still unverified: `persisted()` was false; data seen intact only about 1.5 h), and audio playback requiring a user tap.
 - Whether a free GitHub plan can publish Pages from a private repo.
 
 ## Conventions
