@@ -5,8 +5,8 @@ This content comes from an earlier verification spike.
 - Chromebook (Chrome): Web Speech API works for es-MX (5/5 phrases; 4/5 on the first try, 5/5 with one retry). 24 Spanish voices; no native es-MX voice.
 - iPhone Safari: see 'iPhone Safari speech findings' below.
 - GitHub Contents API CORS: see 'GitHub Contents API CORS' below. Verified 2026-10-21 with a real PAT on Chromebook, iPhone, and iPad (see below).
-- Gemini API CORS: see 'Gemini API CORS' below. Preflight verified with a dummy key only; real key not yet tested.
-- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini API success path and Spanish quality (see 'Gemini API CORS').
+- Gemini API: see 'Gemini API CORS and limits' below. Verified 2026-10-21 with a real free-tier key on Chromebook, iPhone, and iPad (user-run; see below).
+- Not yet tested: MacBook Safari (deferred; not required for the first release), offline behavior, Gemini free-tier rate limits.
 
 ## iPhone Safari speech findings (2026-10-19 and 2026-10-20)
 
@@ -78,10 +78,22 @@ Question: can a page on `https://briankdew.github.io` call `generativelanguage.g
 
 **Verified (Playwright Chromium, opt-in `e2e/gemini-cors.spec.ts`, page origin stubbed as `https://briankdew.github.io`, dummy key):** POST with `x-goog-api-key` and JSON body: preflight passes and JS reads status 400 and `API_KEY_INVALID`.
 
+**Verified 2026-10-21 (real free-tier key, real origin; run by the user, results as reported):**
+- Method: a temporary page on `https://briankdew.github.io`, a real free-tier API key typed into a password field (in memory only), sent in the `x-goog-api-key` header, 6 es-MX A1 prompt cases (7 calls, including one two-turn exchange).
+- Success path from the real origin: Chromebook Chrome 154 (tab), iPhone Safari 27.2 (tab and home-screen app), iPad Safari 27.0 (tab and home-screen app). Home-screen runs are identified by `navigator.standalone` being true; the display-mode line reported "browser" even there, so it is not reliable on iOS.
+- `gemini-3.6-flash`: replies in 4.6 to 37.7 s; 2 of 6 calls returned HTTP 503 "high demand" (16-18 s to fail); each success used 473-728 hidden thinking tokens.
+- `gemini-3.5-flash-lite`: 35 calls across 5 runs, all HTTP 200, no thinking tokens, 68-262 total tokens per call, typical latency 0.6-2.0 s, with 3 slow calls (11, 14.5, 25 s).
+- Quality (judged by the AI, not a native speaker): beginner-appropriate es-MX. "Yo tiene hambre" was always corrected to "tengo", but 4 of 5 lite runs gave a confusing explanation. Two-turn context worked.
+- The temporary probe page (`public/gemini-probe.html`) was removed from the repo afterwards.
+
 **Unverified:**
+- Free-tier rate limits: the docs publish no figures (check AI Studio). No 429 was seen in 35 lite calls, which does not establish the limit.
+- Whether the key's `github.io` HTTP-referrer restriction was enforced: the run reports do not say if the key was restricted, so this is not confirmed.
+- Model IDs came from Google's docs and may change; the app should make the model ID a setting.
+- Free-tier content may be used by Google to improve its products.
+- Quality is one AI judgment of a few prompts, not a native speaker's.
 - Playwright WebKit: fails to launch on Crostini (missing `libmanette-0.2.so.0`); not iOS Safari anyway.
-- Anything needing a real key: the 200 success path, whether the key's `github.io` HTTP-referrer restriction accepts browser calls, and Spanish (es-MX) quality at A1 level. Pending the user's run of `public/gemini-probe.html` on Chromebook, iPhone, and iPad.
-- iPhone Safari, iPad Safari, home-screen app (ITP, content blockers).
+- Offline behavior; long idle periods.
 - `GET /v1beta/models` needs a valid key (dummy key returns 400), so model IDs below come from the docs, not from the API.
 
 **Free-tier limits (documented, fetched 2026-10-21):**

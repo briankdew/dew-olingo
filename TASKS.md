@@ -26,5 +26,6 @@
 - [ ] Playwright WebKit: not run locally (`libmanette`); spec is not run in CI by design.
 - [x] Free-tier limits: documented figures do not exist publicly; docs point to AI Studio (see docs/DEVICES.md).
 - [x] Wrote `public/gemini-probe.html` (key in memory only; header auth; 5 single-turn prompts plus one two-turn exchange). Smoke-tested against a mocked Gemini in Chromium: key only in the header, no storage, no other hosts, turn 2 sends full history.
-- [ ] Real key on the real origin: success path, es-MX quality, and the `github.io` referrer restriction, on Chromebook, iPhone, iPad. Needs the user, after merge (Pages deploys from main).
-- [ ] Follow-up PR: remove `public/gemini-probe.html` and record the user's results.
+- [x] Real key on the real origin: success path and es-MX quality verified on Chromebook, iPhone, iPad (user-run, home-screen via `navigator.standalone`). The `github.io` referrer restriction is not confirmed.
+- [ ] Free-tier rate limits for this account: unverified (check AI Studio).
+- [x] Follow-up PR: removed `public/gemini-probe.html` and recorded the results in docs/DEVICES.md and CLAUDE.md.
