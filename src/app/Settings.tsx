@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SpeechCheck } from './SpeechCheck'
 import { DEFAULT_GEMINI_MODEL, GeminiProvider } from '../services/llm/gemini'
 import { LLMError } from '../services/llm/types'
 import { clearSecret, getSecret, maskSecret, setSecret, type SecretName } from '../services/secrets'
@@ -122,6 +123,7 @@ export function Settings() {
       <p role="status" data-testid="test-result">
         {result}
       </p>
+      <SpeechCheck />
       <h3>Sync</h3>
       <SecretField name="github" label="GitHub token (fine-grained, one repo)" />
       <p>

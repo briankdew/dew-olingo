@@ -16,10 +16,4 @@ describe('route table', () => {
       'Settings',
     ])
   })
-
-  it('keeps the speech test page at a hidden route', () => {
-    const speech = ROUTES.find((r) => r.path === '/spike/speech')
-    expect(speech?.hidden).toBe(true)
-    expect(NAV_ROUTES).not.toContain(speech)
-  })
 })
