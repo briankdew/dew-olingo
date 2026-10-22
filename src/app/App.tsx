@@ -1,6 +1,7 @@
 import { Link, NavLink, Route, Routes } from 'react-router'
 import { SpeechTest } from '../spike/SpeechTest'
 import { NAV_ROUTES } from './routes'
+import { Settings } from './Settings'
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -48,7 +49,7 @@ export function App() {
         <Route path="/scaffolding" element={<Placeholder title="Scaffolding" />} />
         <Route path="/input-sandbox" element={<Placeholder title="Input Sandbox" />} />
         <Route path="/roleplay" element={<Placeholder title="Roleplay" />} />
-        <Route path="/settings" element={<Placeholder title="Settings" />} />
+        <Route path="/settings" element={<Settings />} />
         <Route
           path="/spike/speech"
           element={
