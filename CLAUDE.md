@@ -102,3 +102,11 @@ The verification spikes are done. Build v1 per `SPEC.md` (screens, milestones, o
 - Never commit API keys or the GitHub PAT; keys are bring-your-own via the settings UI.
 - Run available tests before declaring a task done, and update `TASKS.md`.
 - Test commands: `npm run typecheck`, `npm test` (Vitest), `npm run test:e2e` (builds, then Playwright).
+
+## Status protocol
+
+- At the end of each milestone, report in this fixed shape: done / tests / deviations from the approved plan or SPEC / decisions I need to make / my device checklist / follow-ups.
+- On a blocker, stop and report instead of improvising.
+- Retry transient network failures (git, gh, CI) up to 3 times with waits before stopping.
+- Never edit locked lines in CLAUDE.md or SPEC.md without asking first.
+- Summarize any Codex bot review comments on a PR in the report, and add unresolved ones to the TASKS.md follow-ups.
