@@ -56,5 +56,8 @@
 - [ ] M11 Sync
 - [ ] M12 Hardening and release
 
+## Workflow and docs PR (2026-10-22)
+- [x] CLAUDE.md status protocol; CI timeouts (job 20 min, Playwright install 10 min); Gemini latency findings in docs/DEVICES.md; slow-reply rule in SPEC.md (design rules and M10).
+
 ## Spec (2026-10-21)
 - [x] Interview and SPEC.md written; CLAUDE.md "Next step" points to SPEC.md and TASKS.md.

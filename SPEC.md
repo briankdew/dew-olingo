@@ -11,6 +11,7 @@ Platforms for v1: Chromebook Chrome, iPhone Safari, iPad Safari (tab and home-sc
 - **Speech, offline:** Chrome STT fails offline with error "network". Show a clear offline message and offer the text box. Local TTS works offline.
 - **Network:** every request goes through one `fetchWithTimeout` (default 10 s, longer for LLM calls) because the always-on VPN makes offline requests hang for minutes. Never rely on `navigator.onLine`.
 - **Gemini:** the model ID is a setting, default `gemini-3.5-flash-lite`. Handle 429 and 503 with backoff. Free-tier limits for this account are unknown. The lite model's explanations are sometimes confusing, so the UI shows the corrected sentence first and the explanation as secondary text.
+- **Slow replies:** Gemini replies have a slow tail (see docs/DEVICES.md, 2026-10-22). Any wait on the LLM shows a waiting state with elapsed seconds, a Cancel and a manual Retry. No automatic retry after a timeout, and a slow reply is never described as being offline.
 - **Secrets:** the Gemini key and the GitHub PAT stay in device browser storage and are never exported, synced or committed.
 - **Seed content:** the vocabulary and grammar notes are AI-authored and not verified by a fluent speaker. Errors are expected; flagged items are corrected in the JSON.
 
@@ -41,7 +42,7 @@ Each milestone should fit one Claude Pro 5-hour window. **[A]** is an automated 
 - **M7 Scaffolding UI II.** Listening cards and spoken production. [A] fake-speech e2e. [D] a spoken card works on iPhone and iPad after TTS plays.
 - **M8 Input Sandbox I.** Passage generation (JSON schema, validation), Dexie cache, reader with tap-to-save into the SRS. [A] mocked-Gemini tests cover malformed JSON and retries; cached passages open offline. [D] generate and read a passage on a device.
 - **M9 Input Sandbox II.** TTS read-aloud, locally graded multiple-choice questions, score and missed-word extraction. [A] grading tests. [D] the listening flow on iPhone and iPad.
-- **M10 Roleplay.** Scenarios, the turn loop (STT, Gemini, TTS), per-turn feedback note, text-box fallback, end summary. [A] mocked-LLM and fake-speech turn-loop tests; the watchdog falls back to the text box. [D] a full scenario on iPhone and iPad.
+- **M10 Roleplay.** Scenarios, the turn loop (STT, Gemini, TTS), per-turn feedback note, text-box fallback, end summary. [A] mocked-LLM and fake-speech turn-loop tests; the watchdog falls back to the text box. [D] a full scenario on iPhone and iPad. Note: replies have a slow tail, so the turn loop shows a waiting state with elapsed seconds, a Cancel and a manual Retry; no automatic retry after a timeout; never describe a slow reply as being offline.
 - **M11 Sync.** GitHub Contents API client, merge of append-only logs, retry on a 409, Sync now UI. [A] merge and 409 tests against a stub. [D] sync across two devices; an offline failure shows cleanly.
 - **M12 Hardening and release.** Error states, final device checklist, docs. [A] the full test suite. [D] the full checklist on Chromebook, iPhone and iPad including home-screen apps; record verified or failed results in `docs/DEVICES.md`.
 

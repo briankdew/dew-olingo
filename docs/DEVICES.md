@@ -102,6 +102,22 @@ Question: can a page on `https://briankdew.github.io` call `generativelanguage.g
 - https://ai.google.dev/gemini-api/docs/models : stable Flash-class IDs `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`; `gemini-3-flash-preview` is preview; `gemini-2.5-flash` and `-lite` are not deprecated but limited to users who have used them before; `gemini-2.0-flash` and `-lite` are shut down. No shutdown dates for Flash-class models on that page.
 - The page content came through a summarizing fetch tool, not a raw read; confirm the figures in the docs before relying on them.
 
+## Gemini latency variation (2026-10-22)
+
+Method: direct curl calls, no retries, from the Chromebook, measured by the user. The key was not recorded.
+
+**`gemini-3.5-flash-lite`:** 30 calls in three runs within about 20 minutes.
+- Run medians: about 10.6 s, 3.3 s and 2.4 s. In the second run one call got no answer in 40 s.
+- 6 of 30 calls took over 15 s and 3 of 30 took over 30 s.
+- No 429.
+- This differs from the 2026-10-21 browser runs (typically 0.6-2.0 s, 3 of 35 slow). The cause of the difference is unknown.
+
+**`gemini-3.1-flash-lite`:**
+- One run of 10 calls returned 403 (cause unknown, likely an empty key paste).
+- The next run had 4 of 10 calls return 503; the answered ones took 6 to 12 s.
+
+**Conclusion:** latency varies sharply over minutes. Keep `gemini-3.5-flash-lite` as the default; the model ID stays a setting. **The cause of the variation is unknown.**
+
 ## Offline behavior (2026-10-21)
 
 Method: a temporary probe at `https://briankdew.github.io/dew-olingo/offline-probe/` (own narrow-scope service worker, raw IndexedDB, speech buttons). The probe was removed from the repo afterwards.
