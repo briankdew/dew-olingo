@@ -54,3 +54,22 @@ test('test connection without a key asks for one', async ({ page }) => {
   await page.getByRole('button', { name: 'Test connection' }).click()
   await expect(page.getByTestId('test-result')).toContainText('Save a Gemini key first')
 })
+
+test('test connection shows elapsed seconds while waiting, and a non-auth 400 is not called auth', async ({ page }) => {
+  await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    await new Promise((r) => setTimeout(r, 2500))
+    return route.fulfill({
+      status: 400,
+      headers: CORS,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'unsupported option' } }),
+    })
+  })
+  await page.goto('./#/settings')
+  await page.getByLabel(/Gemini API key/).fill(FAKE_KEY)
+  await page.getByRole('button', { name: 'Save' }).first().click()
+  await page.getByRole('button', { name: 'Test connection' }).click()
+  await expect(page.getByTestId('test-result')).toContainText(/Testing… [12] s/)
+  await expect(page.getByTestId('test-result')).toContainText('Failed (bad-request)')
+})

@@ -13,9 +13,23 @@ export interface GeminiOptions {
   retry?: RetryOptions
 }
 
-function parseRetryAfterMs(res: Response): number | undefined {
-  const s = Number(res.headers.get('retry-after'))
-  return Number.isFinite(s) && s > 0 ? s * 1000 : undefined
+const MAX_RETRY_AFTER_MS = 60_000
+
+/** Retry-After is delay-seconds or an HTTP date. */
+export function parseRetryAfterMs(header: string | null, now = Date.now()): number | undefined {
+  if (!header) return undefined
+  const s = Number(header)
+  const ms = Number.isFinite(s) ? s * 1000 : Date.parse(header) - now
+  return Number.isFinite(ms) && ms > 0 ? Math.min(ms, MAX_RETRY_AFTER_MS) : undefined
+}
+
+interface GeminiErrorBody {
+  error?: { message?: string; status?: string; details?: { reason?: string }[] }
+}
+
+function isInvalidKey(body: GeminiErrorBody): boolean {
+  const e = body.error
+  return !!e && (!!e.details?.some((d) => d.reason === 'API_KEY_INVALID') || /api key not valid/i.test(e.message ?? ''))
 }
 
 export class GeminiProvider implements LLMProvider {
@@ -44,22 +58,28 @@ export class GeminiProvider implements LLMProvider {
         timeoutMs: this.opts.timeoutMs ?? LLM_TIMEOUT_MS,
       })
     } catch (e) {
-      if (e instanceof TimeoutError) throw new LLMError('timeout', 'Gemini did not answer in time. You may be offline.')
+      if (e instanceof TimeoutError) {
+        const secs = Math.round((this.opts.timeoutMs ?? LLM_TIMEOUT_MS) / 1000)
+        throw new LLMError('timeout', `Gemini did not answer within ${secs} seconds. It may be slow, or you may be offline.`)
+      }
       throw new LLMError('offline', 'Could not reach Gemini. You may be offline.')
     }
     if (!res.ok) {
       let detail = ''
+      let body: GeminiErrorBody = {}
       try {
-        detail = this.scrub(((await res.json()) as { error?: { message?: string } }).error?.message ?? '')
+        body = (await res.json()) as GeminiErrorBody
+        detail = this.scrub(body.error?.message ?? '')
       } catch {
         // body not JSON
       }
       const suffix = detail ? `: ${detail}` : ''
-      if (res.status === 429) throw new LLMError('rate-limited', `Gemini rate limit reached (429)${suffix}`, parseRetryAfterMs(res))
-      if (res.status === 503) throw new LLMError('unavailable', `Gemini is busy (503)${suffix}`, parseRetryAfterMs(res))
-      if (res.status === 400 || res.status === 401 || res.status === 403) {
+      if (res.status === 429) throw new LLMError('rate-limited', `Gemini rate limit reached (429)${suffix}`, parseRetryAfterMs(res.headers.get('retry-after')))
+      if (res.status === 503) throw new LLMError('unavailable', `Gemini is busy (503)${suffix}`, parseRetryAfterMs(res.headers.get('retry-after')))
+      if (res.status === 401 || res.status === 403 || (res.status === 400 && isInvalidKey(body))) {
         throw new LLMError('auth', `Gemini rejected the request (${res.status})${suffix}`)
       }
+      if (res.status === 400) throw new LLMError('bad-request', `Gemini rejected the request as invalid (400)${suffix}`)
       throw new LLMError('bad-response', `Gemini error ${res.status}${suffix}`)
     }
     const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }

@@ -59,5 +59,11 @@
 ## Workflow and docs PR (2026-10-22)
 - [x] CLAUDE.md status protocol; CI timeouts (job 20 min, Playwright install 10 min); Gemini latency findings in docs/DEVICES.md; slow-reply rule in SPEC.md (design rules and M10).
 
+## M2 follow-ups (2026-10-22)
+- [x] Timeout message names the seconds and says Gemini may be slow or you may be offline; Test connection shows elapsed seconds while waiting.
+- [x] HTTP 400 is `auth` only for API_KEY_INVALID / "API key not valid"; other 400s are the new `bad-request` kind. 401 and 403 stay `auth`.
+- [x] Codex PR #16: `Retry-After` HTTP-date form is parsed (capped at 60 s); Settings no longer overwrites a field the user already edited with a late-loading stored value.
+- [ ] Follow-up: the late-load guard in Settings has no automated test (needs slow IndexedDB; no component-test setup). Checked by reading only.
+
 ## Spec (2026-10-21)
 - [x] Interview and SPEC.md written; CLAUDE.md "Next step" points to SPEC.md and TASKS.md.

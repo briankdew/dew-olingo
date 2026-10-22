@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_GEMINI_MODEL, GeminiProvider } from '../services/llm/gemini'
 import { LLMError } from '../services/llm/types'
 import { clearSecret, getSecret, maskSecret, setSecret, type SecretName } from '../services/secrets'
@@ -57,9 +57,16 @@ export function Settings() {
   const [result, setResult] = useState('')
   const [testing, setTesting] = useState(false)
 
+  // Stored values load asynchronously; never overwrite a field the user has already edited.
+  const edited = useRef({ model: false, repo: false })
+
   useEffect(() => {
-    void getModel().then(setModelState)
-    void getSyncRepo().then(setRepoState)
+    void getModel().then((m) => {
+      if (!edited.current.model) setModelState(m)
+    })
+    void getSyncRepo().then((r) => {
+      if (!edited.current.repo) setRepoState(r)
+    })
   }, [])
 
   const testConnection = async () => {
@@ -69,8 +76,9 @@ export function Settings() {
       return
     }
     setTesting(true)
-    setResult('Testing…')
+    setResult('Testing… 0 s')
     const started = performance.now()
+    const ticker = setInterval(() => setResult(`Testing… ${Math.floor((performance.now() - started) / 1000)} s`), 1000)
     try {
       await new GeminiProvider({ apiKey: key, model, timeoutMs: 15_000 }).generate({
         messages: [{ role: 'user', text: 'Reply with the single word: ok' }],
@@ -79,6 +87,7 @@ export function Settings() {
     } catch (e) {
       setResult(e instanceof LLMError ? `Failed (${e.kind}): ${e.message}` : 'Failed: unexpected error.')
     } finally {
+      clearInterval(ticker)
       setTesting(false)
     }
   }
@@ -94,7 +103,10 @@ export function Settings() {
           <br />
           <input
             value={model}
-            onChange={(e) => setModelState(e.target.value)}
+            onChange={(e) => {
+              edited.current.model = true
+              setModelState(e.target.value)
+            }}
             onBlur={() => void setModel(model)}
             autoCapitalize="off"
             spellCheck={false}
@@ -118,7 +130,10 @@ export function Settings() {
           <br />
           <input
             value={repo}
-            onChange={(e) => setRepoState(e.target.value)}
+            onChange={(e) => {
+              edited.current.repo = true
+              setRepoState(e.target.value)
+            }}
             onBlur={() => void setSyncRepo(repo)}
             autoCapitalize="off"
             spellCheck={false}

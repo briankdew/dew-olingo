@@ -14,7 +14,7 @@ export interface LLMProvider {
   generate(req: LLMRequest): Promise<string>
 }
 
-export type LLMErrorKind = 'auth' | 'rate-limited' | 'unavailable' | 'timeout' | 'offline' | 'bad-response'
+export type LLMErrorKind = 'auth' | 'bad-request' | 'rate-limited' | 'unavailable' | 'timeout' | 'offline' | 'bad-response'
 
 export class LLMError extends Error {
   constructor(
