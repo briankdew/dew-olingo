@@ -71,6 +71,7 @@
 - [x] Added a step before the install that sets apt `Acquire::Retries 3` and a 30 s timeout. Nothing else in `ci.yml` changed.
 - Not established: why the mirror stalls, and whether the two older hangs stalled at the same point (their logs go silent after apt starts).
 - [ ] Watch the next runs; if the hang recurs, wrap the install in a `timeout 4m` x3 retry loop.
+- **Result (PR #20, same day): the apt change did not prevent the hang.** The step ran, yet the install stalled again on `libcodec2-1.2` (9 MB, `Ign:` after about 100 s, same package as the PR #17 hang) and hit the 10-minute step timeout at package 28 of 181. A 30 s no-data timeout does not fire when data trickles in, so the stall is slow transfer from azure.archive.ubuntu.com, not a dead connection (inferred). A different failure also appeared once: `packages.microsoft.com` returned 403 during `apt update` (exit 100). Both cleared on re-trigger. So the retry-loop step above is now justified; not built yet.
 
 ## M3 Speech services (2026-10-22)
 - [x] `services/tts` (dedupe by voiceURI, es-MX > es-US > es > es-ES, `speak()` settles only on end), `services/stt` (new recognizer per `listen()`, abort and wait for `end` before the next, watchdog W0-W4 keyed on `audiostart` and `result`), `services/speech.ts` wiring (listen refused while TTS plays; speak aborts a live session).
@@ -80,6 +81,7 @@
 - [ ] [D] iPhone and iPad, tab and home-screen app: run Self-test, record Part A and Part B separately with the event lists. If Part A hangs, decide on a continuous-session approach before M10 (DEVICES.md: fresh recognizer per tap hung on iPhone; not built).
 - [ ] [D] Chromebook: voice fallback note, Listen, offline message; mic-denied and silent-Listen checks on iPhone and iPad.
 - [ ] Unverified on iOS: `end` firing after `abort()`; `audiostart` and `result` events arriving as assumed; whether the fresh-session rule works at all.
+- [x] Codex review on PR #20 (2 P2 findings, both fixed in this PR): panel unmount now aborts the self-test, the active session and TTS; voices with empty voiceURI get distinct option ids (`voiceId`).
 - Note: `hidden` in `routes.ts` is now unused (kept, harmless).
 
 ## Spec (2026-10-21)
