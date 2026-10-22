@@ -43,7 +43,7 @@
 
 ## v1 milestones (see SPEC.md for criteria)
 - [x] M0 Shell and deploy (react-router HashRouter; speech test page kept at `#/spike/speech` until M3; [A] done, [D] device check on the Pages URL still to run)
-- [ ] M1 Data layer
+- [x] M1 Data layer ([A] done: Dexie schema, append-only review log, export/import with secrets excluded, `fetchWithTimeout`, `retryWithBackoff`; no [D])
 - [ ] M2 Settings and LLM service
 - [ ] M3 Speech services (delete `src/spike/`)
 - [ ] M4 SRS core and seed content
