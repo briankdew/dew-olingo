@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_GEMINI_MODEL, GeminiProvider } from './gemini'
+import { DEFAULT_GEMINI_MODEL, GeminiProvider, parseRetryAfterMs } from './gemini'
 import { LLMError } from './types'
 
 const FAKE_KEY = 'FAKE_GEMINI_KEY_NOT_REAL'
@@ -80,7 +80,72 @@ describe('GeminiProvider', () => {
     const p = new GeminiProvider({ apiKey: FAKE_KEY, timeoutMs: 20, ...noWait })
     await expect(p.generate({ messages: [{ role: 'user', text: 'a' }] })).rejects.toMatchObject({
       kind: 'timeout',
-      message: expect.stringContaining('offline'),
+      message: expect.stringMatching(/did not answer within \d+ seconds.*slow.*offline/),
+    })
+  })
+
+  it('names the configured timeout in seconds', async () => {
+    vi.stubGlobal('fetch', (_u: string, init: RequestInit) =>
+      new Promise((_r, rej) => init.signal?.addEventListener('abort', () => rej(new DOMException('a', 'AbortError')))),
+    )
+    const p = new GeminiProvider({ apiKey: FAKE_KEY, timeoutMs: 1500, ...noWait })
+    vi.useFakeTimers()
+    const assertion = expect(p.generate({ messages: [{ role: 'user', text: 'a' }] })).rejects.toMatchObject({
+      kind: 'timeout',
+      message: expect.stringContaining('within 2 seconds'),
+    })
+    await vi.advanceTimersByTimeAsync(2000)
+    await assertion
+    vi.useRealTimers()
+  })
+
+  describe('HTTP 400 classification', () => {
+    const run = async (res: Response) => {
+      const fetchMock = vi.fn(async () => res)
+      vi.stubGlobal('fetch', fetchMock)
+      const e = (await new GeminiProvider({ apiKey: FAKE_KEY, ...noWait })
+        .generate({ messages: [{ role: 'user', text: 'a' }] })
+        .catch((x: unknown) => x)) as LLMError
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      return e
+    }
+    const json = (status: number, error: object) => new Response(JSON.stringify({ error }), { status })
+
+    it('400 with reason API_KEY_INVALID is auth', async () => {
+      const e = await run(json(400, { status: 'INVALID_ARGUMENT', message: 'bad', details: [{ reason: 'API_KEY_INVALID' }] }))
+      expect(e.kind).toBe('auth')
+    })
+
+    it('400 whose message says the API key is not valid is auth', async () => {
+      expect((await run(json(400, { message: 'API key not valid. Please pass a valid API key.' }))).kind).toBe('auth')
+    })
+
+    it('any other 400 is a bad request, not auth', async () => {
+      const e = await run(json(400, { status: 'INVALID_ARGUMENT', message: 'contents is not specified' }))
+      expect(e.kind).toBe('bad-request')
+      expect(e.message).toContain('contents is not specified')
+    })
+
+    it('a 400 with a non-JSON body is a bad request', async () => {
+      expect((await run(new Response('<html>oops</html>', { status: 400 }))).kind).toBe('bad-request')
+    })
+
+    it.each([401, 403])('%i stays auth', async (status) => {
+      expect((await run(json(status, { message: 'denied' }))).kind).toBe('auth')
+    })
+  })
+
+  describe('parseRetryAfterMs', () => {
+    const now = Date.parse('2026-10-22T12:00:00Z')
+    it('reads delay-seconds', () => expect(parseRetryAfterMs('3', now)).toBe(3000))
+    it('reads an HTTP date in the future', () =>
+      expect(parseRetryAfterMs('Thu, 22 Oct 2026 12:00:05 GMT', now)).toBe(5000))
+    it('caps very long delays', () => expect(parseRetryAfterMs('9999', now)).toBe(60_000))
+    it('ignores past dates, zero, junk and missing', () => {
+      expect(parseRetryAfterMs('Thu, 22 Oct 2026 11:00:00 GMT', now)).toBeUndefined()
+      expect(parseRetryAfterMs('0', now)).toBeUndefined()
+      expect(parseRetryAfterMs('soon', now)).toBeUndefined()
+      expect(parseRetryAfterMs(null, now)).toBeUndefined()
     })
   })
 
