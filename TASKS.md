@@ -64,6 +64,13 @@
 - [x] HTTP 400 is `auth` only for API_KEY_INVALID / "API key not valid"; other 400s are the new `bad-request` kind. 401 and 403 stay `auth`.
 - [x] Codex PR #16: `Retry-After` HTTP-date form is parsed (capped at 60 s); Settings no longer overwrites a field the user already edited with a late-loading stored value.
 - [ ] Follow-up: the late-load guard in Settings has no automated test (needs slow IndexedDB; no component-test setup). Checked by reading only.
+- [ ] Follow-up (Codex, PR #18): a 400 whose body is valid JSON of an odd shape (for example `null`) can throw a TypeError in `isInvalidKey` or `body.error` in `src/services/llm/gemini.ts` instead of classifying as `bad-request`. Read from the code only; not reproduced, not fixed.
+
+## CI install hang (2026-10-22)
+- [x] Logs of the three hung runs (39798768796, 39803111143, 39840307091) read: all stalled in the apt-get phase of `playwright install --with-deps` (package downloads from azure.archive.ubuntu.com stalling, `Ign:` about 2 min after `Get:`). Passing runs finish the step in 30-60 s.
+- [x] Added a step before the install that sets apt `Acquire::Retries 3` and a 30 s timeout. Nothing else in `ci.yml` changed.
+- Not established: why the mirror stalls, and whether the two older hangs stalled at the same point (their logs go silent after apt starts).
+- [ ] Watch the next runs; if the hang recurs, wrap the install in a `timeout 4m` x3 retry loop.
 
 ## Spec (2026-10-21)
 - [x] Interview and SPEC.md written; CLAUDE.md "Next step" points to SPEC.md and TASKS.md.
