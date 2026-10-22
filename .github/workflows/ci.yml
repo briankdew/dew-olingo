@@ -25,6 +25,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      - run: printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci-retries
       - run: npx playwright install --with-deps chromium webkit
         timeout-minutes: 10
       - run: npx playwright test
