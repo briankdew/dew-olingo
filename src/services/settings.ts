@@ -19,3 +19,13 @@ export async function getSyncRepo(): Promise<string> {
 export async function setSyncRepo(repo: string): Promise<void> {
   await db.settings.put({ key: 'syncRepo', value: repo.trim() })
 }
+
+/** The chosen TTS voice, by voiceURI. Empty means "use the best-ranked voice". */
+export async function getVoiceURI(): Promise<string> {
+  const row = await db.settings.get('voiceURI')
+  return typeof row?.value === 'string' ? row.value : ''
+}
+
+export async function setVoiceURI(voiceURI: string): Promise<void> {
+  await db.settings.put({ key: 'voiceURI', value: voiceURI })
+}
