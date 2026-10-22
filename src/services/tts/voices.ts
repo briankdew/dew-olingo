@@ -11,11 +11,14 @@ export const LANG_PREFERENCE = ['es-mx', 'es-us', 'es', 'es-es']
 const normLang = (lang: string) => lang.replace('_', '-').toLowerCase()
 const isSpanish = (v: VoiceLike) => /^es(-|$)/.test(normLang(v.lang))
 
+/** Stable identity of a voice: its voiceURI, or name+lang when the engine gives none. */
+export const voiceId = (v: VoiceLike) => v.voiceURI || `${v.name}|${v.lang}`
+
 /** iPhone Safari listed each voice three times on one load; voiceURI identifies a voice. */
 export function dedupeVoices<T extends VoiceLike>(voices: T[]): T[] {
   const seen = new Set<string>()
   return voices.filter((v) => {
-    const key = v.voiceURI || `${v.name}|${v.lang}`
+    const key = voiceId(v)
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -33,9 +36,9 @@ export function rankVoices<T extends VoiceLike>(voices: T[]): T[] {
   )
 }
 
-/** The saved voice if it still exists, else the best-ranked one. `ranked` comes from rankVoices. */
+/** The saved voice (by voiceId) if it still exists, else the best-ranked one. `ranked` comes from rankVoices. */
 export function pickVoice<T extends VoiceLike>(savedURI: string, ranked: T[]): T | undefined {
-  return ranked.find((v) => savedURI && v.voiceURI === savedURI) ?? ranked[0]
+  return ranked.find((v) => savedURI && voiceId(v) === savedURI) ?? ranked[0]
 }
 
 export const hasMexicanVoice = (ranked: VoiceLike[]) => ranked.some((v) => normLang(v.lang) === 'es-mx')

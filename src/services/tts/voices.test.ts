@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dedupeVoices, hasMexicanVoice, pickVoice, rankVoices } from './voices'
+import { dedupeVoices, hasMexicanVoice, pickVoice, rankVoices, voiceId } from './voices'
 import { fakeVoice } from './testing'
 
 describe('dedupeVoices', () => {
@@ -46,5 +46,13 @@ describe('pickVoice', () => {
   it('returns the saved voice when it still exists', () => expect(pickVoice('es', ranked)?.voiceURI).toBe('es'))
   it('falls back to the top-ranked voice when the saved one has vanished', () =>
     expect(pickVoice('gone', ranked)?.voiceURI).toBe('mx'))
+  it('tells voices with empty voiceURIs apart by name+lang', () => {
+    const a = { ...fakeVoice('', 'es-MX'), name: 'Paulina' }
+    const b = { ...fakeVoice('', 'es-MX'), name: 'Juan' }
+    const two = rankVoices([a, b])
+    expect(voiceId(b)).toBe('Juan|es-MX')
+    expect(pickVoice(voiceId(b), two)).toBe(b)
+    expect(pickVoice(voiceId(a), two)).toBe(a)
+  })
   it('returns undefined with no Spanish voices', () => expect(pickVoice('x', [])).toBeUndefined())
 })

@@ -110,6 +110,26 @@ describe('runSelfTest()', () => {
     expect(prompts.at(-1)).toBe('Done.')
   })
 
+  it('stops before the next step once the signal is aborted', async () => {
+    f.onStart = good
+    synth.autoFinishMs = 20
+    const ctl = new AbortController()
+    const rows: SelfTestRow[] = []
+    const p = runSelfTest(make(), {
+      prompt: () => {},
+      signal: ctl.signal,
+      onRow: (r) => {
+        rows.push(r)
+        if (rows.length === 1) ctl.abort()
+      },
+    })
+    await run(5_000)
+    await p
+    expect(rows).toHaveLength(1)
+    expect(f.instances).toHaveLength(1)
+    expect(synth.spoken).toHaveLength(0)
+  })
+
   it('a failing listen keeps its events and rule, and the test carries on to the next step', async () => {
     let n = 0
     f.onStart = (r) => (++n === 1 ? setTimeout(() => r.audiostart(), 10) : good(r))

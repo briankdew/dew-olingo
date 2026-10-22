@@ -129,3 +129,16 @@ test('a silent session times out at the real 10 s watchdog and the self-test sho
   await expect(row).toContainText('audiostart')
   await expect(row).toContainText('end')
 })
+
+test('leaving Settings during the self-test stops it: no further sessions open', async ({ page }) => {
+  await installFakes(page, 'good')
+  await page.goto('./#/settings')
+  await page.getByRole('button', { name: 'Self-test' }).click()
+  await expect(page.getByTestId('selftest-row')).toHaveCount(1)
+  await page.getByRole('navigation').getByRole('link', { name: 'Home' }).click()
+  const count = () => page.evaluate(() => (window as unknown as { __fake: { instances: number } }).__fake.instances)
+  const after = await count()
+  await page.waitForTimeout(1000)
+  expect(await count()).toBe(after)
+  expect(after).toBeLessThan(4)
+})

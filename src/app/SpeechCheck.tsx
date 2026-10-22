@@ -4,7 +4,7 @@ import { runSelfTest, SAMPLE_PHRASE, type SelfTestRow } from '../services/speech
 import { getVoiceURI, setVoiceURI } from '../services/settings'
 import { SttError } from '../services/stt/stt'
 import { formatEventList } from '../services/stt/format'
-import { hasMexicanVoice, pickVoice, rankVoices, type VoiceLike } from '../services/tts/voices'
+import { hasMexicanVoice, pickVoice, rankVoices, voiceId, type VoiceLike } from '../services/tts/voices'
 
 export function SpeechCheck() {
   const [voices, setVoices] = useState<VoiceLike[]>([])
@@ -13,12 +13,22 @@ export function SpeechCheck() {
   const [busy, setBusy] = useState(false)
   const [rows, setRows] = useState<SelfTestRow[]>([])
   const edited = useRef(false)
+  const abort = useRef(new AbortController())
 
   useEffect(() => {
+    // Strict-mode remounts reuse the ref, so start each mount with a live controller.
+    abort.current = new AbortController()
     void getVoiceURI().then((v) => {
       if (!edited.current) setSaved(v)
     })
-    return speech.tts.watchVoices((all) => setVoices(rankVoices(all)))
+    const stopWatching = speech.tts.watchVoices((all) => setVoices(rankVoices(all)))
+    return () => {
+      stopWatching()
+      // Leaving the screen must not leave the mic open or the self-test running on another screen.
+      abort.current.abort()
+      speech.stt.abortActive()
+      speech.tts.cancel()
+    }
   }, [])
 
   const voice = pickVoice(saved, voices)
@@ -53,7 +63,7 @@ export function SpeechCheck() {
     setBusy(true)
     setRows([])
     try {
-      await runSelfTest(speech, { voice, prompt: setStatus, onRow: (r) => setRows((prev) => [...prev, r]) })
+      await runSelfTest(speech, { voice, signal: abort.current.signal, prompt: setStatus, onRow: (r) => setRows((prev) => [...prev, r]) })
     } finally {
       setBusy(false)
     }
@@ -69,7 +79,7 @@ export function SpeechCheck() {
           Voice
           <br />
           <select
-            value={voice?.voiceURI ?? ''}
+            value={voice ? voiceId(voice) : ''}
             disabled={voices.length === 0 || busy}
             onChange={(e) => {
               edited.current = true
@@ -79,7 +89,7 @@ export function SpeechCheck() {
           >
             {voices.length === 0 && <option value="">No Spanish voices found</option>}
             {voices.map((v) => (
-              <option key={v.voiceURI || `${v.name}|${v.lang}`} value={v.voiceURI}>
+              <option key={voiceId(v)} value={voiceId(v)}>
                 {v.name} ({v.lang}, {v.localService ? 'on device' : 'network'})
               </option>
             ))}
