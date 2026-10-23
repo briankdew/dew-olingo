@@ -87,3 +87,7 @@
 
 ## Spec (2026-10-21)
 - [x] Interview and SPEC.md written; CLAUDE.md "Next step" points to SPEC.md and TASKS.md.
+
+## Speech-check panel UX (2026-10-23)
+- [x] Self-test explanation, progress line, Stop test, summary with plain verdict, voice used, Copy results, panel-specific STT messages (`sttMessage(kind, 'panel')`; conversation wording unchanged). Tests: unit (summary, report, message contexts) and e2e.
+- [ ] [D] Run Self-test on iPhone and iPad (tab and home-screen app) and paste the Copy results output.

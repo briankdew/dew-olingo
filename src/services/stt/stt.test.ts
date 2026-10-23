@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { STT_MESSAGES, mapSttErrorCode } from './errors'
+import { STT_MESSAGES, mapSttErrorCode, sttMessage } from './errors'
 import { formatEventList } from './format'
 import { SttError, createStt, type ListenResult } from './stt'
 import { FakeRecognitionFactory } from './testing'
@@ -217,5 +217,22 @@ describe('formatEventList()', () => {
       'W1',
     )
     expect(lines).toEqual(['    12 ms  start', '   840 ms  result (interim)', 'watchdog rule fired: W1'])
+  })
+})
+
+describe('sttMessage contexts', () => {
+  it('conversation wording is unchanged and mentions typing', () => {
+    expect(sttMessage('offline')).toBe('Speech recognition needs an internet connection and could not reach it. Type your answer instead.')
+    expect(sttMessage('timeout', 'conversation')).toBe('No speech was detected in time. Try again, or type your answer.')
+    expect(sttMessage('no-speech')).toBe("I didn't hear anything. Try again, or type your answer.")
+    expect(sttMessage('other')).toBe('Speech recognition failed. Try again, or type your answer.')
+  })
+  it('panel wording never mentions typing and retry messages end with Tap Listen to try again.', () => {
+    for (const k of ['offline', 'permission', 'timeout', 'no-speech', 'unsupported', 'busy', 'aborted', 'other'] as const) {
+      expect(sttMessage(k, 'panel')).not.toMatch(/type|text box/i)
+    }
+    for (const k of ['offline', 'timeout', 'no-speech', 'other'] as const) {
+      expect(sttMessage(k, 'panel').endsWith('Tap Listen to try again.')).toBe(true)
+    }
   })
 })

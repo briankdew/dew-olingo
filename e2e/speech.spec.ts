@@ -101,6 +101,9 @@ test('self-test: every listen passes and shows its event list with results befor
   const rows = page.getByTestId('selftest-row')
   await expect(rows).toHaveCount(4, { timeout: 10_000 })
   await expect(rows).toHaveText([/A1 listen: pass/, /A2 listen: pass/, /B1 listen: pass/, /B2 listen: pass/])
+  await expect(page.getByTestId('selftest-summary')).toContainText('Part A: 2 of 2 passed. Part B: 2 of 2 passed.')
+  await expect(page.getByTestId('selftest-summary')).toContainText('No problems found.')
+  await expect(page.getByTestId('selftest-summary')).toContainText('Voice used: Paulina (es-MX, on device)')
   const first = await rows.first().locator('pre').innerText()
   expect(first.indexOf('result (final)')).toBeGreaterThan(-1)
   expect(first.indexOf('result (final)')).toBeLessThan(first.indexOf('audioend'))
@@ -108,12 +111,13 @@ test('self-test: every listen passes and shows its event list with results befor
   expect(await page.evaluate(() => (window as unknown as { __fake: { instances: number } }).__fake.instances)).toBe(4)
 })
 
-test('offline: the network error shows the offline message with the text-box hint', async ({ page }) => {
+test('offline: the network error shows the panel offline message, with no text-box hint', async ({ page }) => {
   await installFakes(page, 'offline')
   await page.goto('./#/settings')
   await page.getByRole('button', { name: 'Listen' }).click()
   await expect(page.getByTestId('speech-status')).toContainText('needs an internet connection')
-  await expect(page.getByTestId('speech-status')).toContainText('Type your answer instead')
+  await expect(page.getByTestId('speech-status')).toContainText('Tap Listen to try again.')
+  await expect(page.getByTestId('speech-status')).not.toContainText('Type your answer')
 })
 
 test('a silent session times out at the real 10 s watchdog and the self-test shows the rule', async ({ page }) => {
@@ -141,4 +145,17 @@ test('leaving Settings during the self-test stops it: no further sessions open',
   await page.waitForTimeout(1000)
   expect(await count()).toBe(after)
   expect(after).toBeLessThan(4)
+})
+
+test('self-test continues after a failed listen and Stop ends it', async ({ page }) => {
+  await page.clock.install()
+  await installFakes(page, 'silent')
+  await page.goto('./#/settings')
+  await page.getByRole('button', { name: 'Self-test' }).click()
+  await expect(page.getByTestId('speech-status')).toContainText('Test 1 of 4 (Part A, listen). Say a short Spanish phrase now.')
+  await page.clock.runFor(10_100)
+  await expect(page.getByTestId('speech-status')).toContainText('Test 2 of 4 (Part A, listen)')
+  await page.getByRole('button', { name: 'Stop test' }).click()
+  await expect(page.getByTestId('speech-status')).toHaveText('Test stopped.')
+  await expect(page.getByRole('button', { name: 'Stop test' })).toHaveCount(0)
 })
