@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dedupeVoices, hasMexicanVoice, pickVoice, rankVoices, voiceId } from './voices'
+import { collapseByQuality, dedupeVoices, hasMexicanVoice, pickVoice, rankVoices, voiceId } from './voices'
 import { fakeVoice } from './testing'
 
 describe('dedupeVoices', () => {
@@ -55,4 +55,56 @@ describe('pickVoice', () => {
     expect(pickVoice(voiceId(a), two)).toBe(a)
   })
   it('returns undefined with no Spanish voices', () => expect(pickVoice('x', [])).toBeUndefined())
+})
+
+describe('quality collapse (iPhone compact / super-compact)', () => {
+  const compact = fakeVoice('com.apple.voice.compact.es-MX.Paulina', 'es-MX')
+  const superCompact = fakeVoice('com.apple.voice.super-compact.es-MX.Paulina', 'es-MX')
+  for (const [label, list] of [['compact first', [compact, superCompact]], ['super-compact first', [superCompact, compact]]] as const) {
+    it(`keeps compact when both exist (${label})`, () => {
+      const out = rankVoices(list.map((v) => ({ ...v, name: 'Paulina' })))
+      expect(out.map((v) => v.voiceURI)).toEqual([compact.voiceURI])
+    })
+  }
+  it('keeps a voice that exists only as super-compact', () => {
+    const only = { ...superCompact, name: 'Paulina' }
+    expect(rankVoices([only])).toEqual([only])
+  })
+  it('does not merge different names or different languages', () => {
+    const list = [
+      { ...compact, name: 'Paulina' },
+      { ...fakeVoice('com.apple.voice.compact.es-ES.Monica', 'es-ES'), name: 'Monica' },
+      { ...fakeVoice('com.apple.voice.compact.es-ES.Paulina', 'es-ES'), name: 'Paulina' },
+    ]
+    expect(rankVoices(list)).toHaveLength(3)
+  })
+  it('leaves untagged Chromebook-style voices unchanged', () => {
+    const list = [fakeVoice('Google español', 'es-ES'), fakeVoice('Google español de Estados Unidos', 'es-US'), fakeVoice('Microsoft Sabina', 'es-MX')]
+    expect(rankVoices(list).map((v) => v.voiceURI)).toEqual(['Microsoft Sabina', 'Google español de Estados Unidos', 'Google español'])
+  })
+  it('a saved hidden voice falls back to the kept voice of the same name and language, not the top-ranked one', () => {
+    const all = [
+      { ...fakeVoice('com.apple.voice.super-compact.es-ES.Monica', 'es-ES'), name: 'Monica' },
+      { ...fakeVoice('com.apple.voice.compact.es-ES.Monica', 'es-ES'), name: 'Monica' },
+      { ...compact, name: 'Paulina' },
+    ]
+    const ranked = rankVoices(all)
+    expect(ranked[0].name).toBe('Paulina')
+    expect(pickVoice('com.apple.voice.super-compact.es-ES.Monica', ranked, all)?.voiceURI).toBe('com.apple.voice.compact.es-ES.Monica')
+  })
+  it('reports a group with another quality tag instead of ranking it, and still applies the compact rule', () => {
+    const list = [
+      { ...fakeVoice('com.apple.voice.enhanced.es-MX.Paulina', 'es-MX'), name: 'Paulina' },
+      { ...superCompact, name: 'Paulina' },
+      { ...fakeVoice('x.compact.es-ES.Monica', 'es-ES'), name: 'Monica' },
+    ]
+    const { voices, unrecognized } = collapseByQuality(list)
+    expect(voices.map((v) => v.voiceURI)).toEqual([superCompact.voiceURI, 'x.compact.es-ES.Monica'])
+    expect(unrecognized).toEqual([
+      { name: 'Paulina', lang: 'es-MX', tags: ['enhanced'], voiceURIs: ['com.apple.voice.enhanced.es-MX.Paulina', superCompact.voiceURI] },
+    ])
+  })
+  it('does not report a lone voice with another tag', () => {
+    expect(collapseByQuality([{ ...fakeVoice('a.premium.es-MX.Paulina', 'es-MX'), name: 'Paulina' }]).unrecognized).toEqual([])
+  })
 })

@@ -24,6 +24,7 @@ TTS interference (two trials, home-screen app, continuous session, Paulina compa
 - Working assumption (unproven, two trials): TTS playback takes over the iOS audio session. Start a fresh recognition session after each playback, and add a watchdog timer.
 
 Voices: es-MX Paulina (compact 5, super-compact 4); es-ES Mónica (compact 2, super-compact 1). Subjective, one listener. On one early load the page listed each voice three times (213 total, 12 Spanish); later loads showed 71 total and 4 Spanish. Dedupe by voiceURI.
+- iPhone duplicate voices are compact and super-compact versions with distinct voiceURIs; the picker shows one per name and language, preferring compact (your preference). The matching assumes the real voiceURI strings contain "compact" / "super-compact"; that is not verified from a logged URI.
 
 Permissions: the home-screen app has its own mic permission. User report: its prompt appeared only after mic access was turned off for Safari proper.
 
