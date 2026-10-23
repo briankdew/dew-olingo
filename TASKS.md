@@ -101,3 +101,8 @@
 - [ ] [D] On iPhone, confirm the picker shows one entry per voice and that the real voiceURIs contain "compact" / "super-compact" (not verified).
 - [x] Self-test summary and Copy results show the selected voice's voiceURI; Copy results also lists every voice the browser reports (voiceURI, name, language, local/network) before dedupe and collapse, marking the one shown in the picker (PR B).
 - [ ] [D] On iPhone and iPad, run Self-test, Copy results, and paste the voice list (this is what answers which voice iOS chose and what the real voiceURIs look like).
+
+## iPhone self-test findings (2026-10-23)
+- [x] Recorded in docs/DEVICES.md: fresh recognizer per listen fails on iPhone Safari (tab); Part B hung at "the app is speaking".
+- [ ] Follow-up: `speak()` has no timeout, so a TTS that never starts or never ends hangs the self-test (and any caller) indefinitely. Needs a timeout and a user-facing failure.
+- [ ] Follow-up: test listening strategies on iPhone (and iPad) before M7: continuous session, reused recognizer, or other; with and without TTS between phrases. Choose one, then revisit the fresh-recognizer-per-listen rule.
