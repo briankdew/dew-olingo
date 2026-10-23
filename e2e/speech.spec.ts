@@ -103,7 +103,7 @@ test('self-test: every listen passes and shows its event list with results befor
   await expect(rows).toHaveText([/A1 listen: pass/, /A2 listen: pass/, /B1 listen: pass/, /B2 listen: pass/])
   await expect(page.getByTestId('selftest-summary')).toContainText('Part A: 2 of 2 passed. Part B: 2 of 2 passed.')
   await expect(page.getByTestId('selftest-summary')).toContainText('No problems found.')
-  await expect(page.getByTestId('selftest-summary')).toContainText('Voice used: Paulina (es-MX, on device)')
+  await expect(page.getByTestId('selftest-summary')).toContainText('Voice used: Paulina (es-MX, on device), voiceURI: es-mx-1')
   const first = await rows.first().locator('pre').innerText()
   expect(first.indexOf('result (final)')).toBeGreaterThan(-1)
   expect(first.indexOf('result (final)')).toBeLessThan(first.indexOf('audioend'))

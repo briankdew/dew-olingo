@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { speech } from '../services/speech'
-import { buildReport, runSelfTest, SAMPLE_PHRASE, summarizeSelfTest, voiceLabel, type SelfTestRow } from '../services/speechSelfTest'
+import { buildReport, runSelfTest, SAMPLE_PHRASE, summarizeSelfTest, voiceLabel, voiceUsedLine, type SelfTestRow } from '../services/speechSelfTest'
 import { getVoiceURI, setVoiceURI } from '../services/settings'
 import { SttError } from '../services/stt/stt'
 import { sttMessage } from '../services/stt/errors'
@@ -96,7 +96,7 @@ export function SpeechCheck() {
 
   const copyResults = async () => {
     try {
-      await navigator.clipboard.writeText(buildReport(rows, testVoice))
+      await navigator.clipboard.writeText(buildReport(rows, testVoice, allVoices))
       setCopyNote('Copied.')
     } catch {
       setCopyNote('Copy failed. Select the results and copy them by hand.')
@@ -168,7 +168,7 @@ export function SpeechCheck() {
             <br />
             {summary.line}
             <br />
-            Voice used: {voiceLabel(testVoice)}
+            {voiceUsedLine(testVoice)}
           </p>
         </div>
       )}

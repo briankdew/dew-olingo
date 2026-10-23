@@ -99,4 +99,5 @@
 - [x] One picker entry per name+language, compact over super-compact; saved hidden voice falls back to its kept sibling; groups with other quality tags are reported by `collapseByQuality` (not shown in the UI).
 - [ ] Codex review of PR #23 never finished (status stayed "running" for 35+ min at merge). Re-run with `@codex review` on a follow-up PR or read the diff.
 - [ ] [D] On iPhone, confirm the picker shows one entry per voice and that the real voiceURIs contain "compact" / "super-compact" (not verified).
-
+- [x] Self-test summary and Copy results show the selected voice's voiceURI; Copy results also lists every voice the browser reports (voiceURI, name, language, local/network) before dedupe and collapse, marking the one shown in the picker (PR B).
+- [ ] [D] On iPhone and iPad, run Self-test, Copy results, and paste the voice list (this is what answers which voice iOS chose and what the real voiceURIs look like).

@@ -44,10 +44,28 @@ describe('summarizeSelfTest', () => {
 
 describe('buildReport', () => {
   it('has the summary, voice, caption and every event list', () => {
-    const out = buildReport(rows([true, true], [true, false]), { voiceURI: 'v', name: 'Paulina', lang: 'es-MX', localService: true })
+    const paulina = { voiceURI: 'com.apple.voice.compact.es-MX.Paulina', name: 'Paulina', lang: 'es-MX', localService: true }
+    const out = buildReport(rows([true, true], [true, false]), paulina, [
+      { voiceURI: 'com.apple.voice.super-compact.es-MX.Paulina', name: 'Paulina', lang: 'es-MX', localService: true },
+      paulina,
+      { voiceURI: 'net.es', name: 'Google español', lang: 'es-ES', localService: false },
+      { voiceURI: 'en', name: 'Alex', lang: 'en-US', localService: true },
+    ])
     expect(out).toContain('Part A: 2 of 2 passed. Part B: 1 of 2 passed.')
-    expect(out).toContain('Voice used: Paulina (es-MX, on device)')
+    expect(out).toContain('Voice used: Paulina (es-MX, on device), voiceURI: com.apple.voice.compact.es-MX.Paulina')
     expect(out).toContain('Troubleshooting events; times are milliseconds after the mic started.')
     expect(out.match(/audiostart/g)).toHaveLength(4)
+    expect(out).toContain('All voices reported by the browser (4)')
+    expect(out).toContain('com.apple.voice.super-compact.es-MX.Paulina | Paulina | es-MX | local\n')
+    expect(out).toContain('com.apple.voice.compact.es-MX.Paulina | Paulina | es-MX | local <- picker')
+    expect(out).toContain('net.es | Google español | es-ES | network\n')
+    expect(out).toContain('en | Alex | en-US | local')
+    expect(out.match(/<- picker/g)).toHaveLength(2) // header text + one marked voice
+  })
+
+  it('handles the default voice and an empty voice list', () => {
+    const out = buildReport(rows([true, true], [true, true]), undefined)
+    expect(out).toContain('Voice used: default voice\n')
+    expect(out).toContain('All voices reported by the browser (0)')
   })
 })
