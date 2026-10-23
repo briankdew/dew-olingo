@@ -53,7 +53,9 @@ User-run on iPhone, Safari tab, with the app's speech-check panel (M3: a fresh r
 
 Conclusion: the fresh-recognizer-per-listen rule fails on iPhone Safari (tab). It matches the earlier spike result above (new recognizer per tap: first attempt captures, later ones hang). A continuous-session or other approach is to be chosen and tested before M7.
 
-Not tested: iPad with the app's panel; the home-screen app with the panel.
+iPad Safari tab (2026-10-23, user-run, fresh page): Play sample spoke; the first Listen captured; the second Listen timed out. Same results as the iPhone.
+
+Not tested: the iPad Self-test; the home-screen apps (iPhone and iPad) with the panel.
 
 ## GitHub Contents API CORS (2026-10-20)
 
