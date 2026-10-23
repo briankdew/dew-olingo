@@ -91,3 +91,9 @@
 ## Speech-check panel UX (2026-10-23)
 - [x] Self-test explanation, progress line, Stop test, summary with plain verdict, voice used, Copy results, panel-specific STT messages (`sttMessage(kind, 'panel')`; conversation wording unchanged). Tests: unit (summary, report, message contexts) and e2e.
 - [ ] [D] Run Self-test on iPhone and iPad (tab and home-screen app) and paste the Copy results output.
+
+## Voice picker collapse (2026-10-23)
+- [x] One picker entry per name+language, compact over super-compact; saved hidden voice falls back to its kept sibling; groups with other quality tags are reported by `collapseByQuality` (not shown in the UI).
+- [ ] Codex review of PR #23 never finished (status stayed "running" for 35+ min at merge). Re-run with `@codex review` on a follow-up PR or read the diff.
+- [ ] [D] On iPhone, confirm the picker shows one entry per voice and that the real voiceURIs contain "compact" / "super-compact" (not verified).
+
