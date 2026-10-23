@@ -9,6 +9,7 @@ import { hasMexicanVoice, pickVoice, rankVoices, voiceId, type VoiceLike } from 
 
 export function SpeechCheck() {
   const [voices, setVoices] = useState<VoiceLike[]>([])
+  const [allVoices, setAllVoices] = useState<VoiceLike[]>([])
   const [saved, setSaved] = useState('')
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,7 +27,10 @@ export function SpeechCheck() {
     void getVoiceURI().then((v) => {
       if (!edited.current) setSaved(v)
     })
-    const stopWatching = speech.tts.watchVoices((all) => setVoices(rankVoices(all)))
+    const stopWatching = speech.tts.watchVoices((all) => {
+      setAllVoices(all)
+      setVoices(rankVoices(all))
+    })
     return () => {
       stopWatching()
       // Leaving the screen must not leave the mic open or the self-test running on another screen.
@@ -36,7 +40,7 @@ export function SpeechCheck() {
     }
   }, [])
 
-  const voice = pickVoice(saved, voices)
+  const voice = pickVoice(saved, voices, allVoices)
 
   const play = async () => {
     setBusy(true)
