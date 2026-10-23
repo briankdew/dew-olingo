@@ -3,7 +3,7 @@ import { SttError, type SttEvent } from './stt/stt'
 import { sttMessage } from './stt/errors'
 import { formatEventList } from './stt/format'
 import type { Tts } from './tts/tts'
-import type { VoiceLike } from './tts/voices'
+import { voiceId, type VoiceLike } from './tts/voices'
 import type { WatchdogRule } from './stt/watchdog'
 
 export interface SelfTestRow {
@@ -106,13 +106,29 @@ export function voiceLabel(v: VoiceLike | undefined): string {
   return v ? `${v.name} (${v.lang}, ${v.localService ? 'on device' : 'network'})` : 'default voice'
 }
 
-/** Plain text for the Copy results button: summary, voice, then each row with its event list. */
-export function buildReport(rows: SelfTestRow[], voice: VoiceLike | undefined): string {
+/** The "Voice used" line: the picker label plus the voiceURI, to tell which voice iOS chose. */
+export function voiceUsedLine(v: VoiceLike | undefined): string {
+  return `Voice used: ${voiceLabel(v)}${v ? `, voiceURI: ${v.voiceURI || '(none)'}` : ''}`
+}
+
+/** Every voice the browser reported, before dedupe and collapse, marking the one shown in the picker. */
+export function formatAllVoices(all: VoiceLike[], shown: VoiceLike | undefined): string[] {
+  const out = [`All voices reported by the browser (${all.length}); "<- picker" marks the one shown in the picker:`]
+  for (const v of all) {
+    const mark = shown && voiceId(v) === voiceId(shown) ? ' <- picker' : ''
+    out.push(`${v.voiceURI || '(no voiceURI)'} | ${v.name} | ${v.lang} | ${v.localService ? 'local' : 'network'}${mark}`)
+  }
+  return out
+}
+
+/** Plain text for the Copy results button: summary, voice, then each row with its event list, then the full voice list. */
+export function buildReport(rows: SelfTestRow[], voice: VoiceLike | undefined, allVoices: VoiceLike[] = []): string {
   const sum = summarizeSelfTest(rows)
-  const out = [sum.text, sum.line, `Voice used: ${voiceLabel(voice)}`, '', 'Troubleshooting events; times are milliseconds after the mic started.']
+  const out = [sum.text, sum.line, voiceUsedLine(voice), '', 'Troubleshooting events; times are milliseconds after the mic started.']
   for (const r of rows) {
     out.push('', `${r.label}: ${r.ok ? 'pass' : 'FAIL'} ${r.text}`)
     out.push(...formatEventList(r.events, r.ruleFired, r.endNotSeen))
   }
+  out.push('', ...formatAllVoices(allVoices, voice))
   return out.join('\n')
 }
