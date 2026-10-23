@@ -29,11 +29,23 @@ jobs:
         timeout-minutes: 15
         run: |
           for attempt in 1 2 3; do
-            if timeout 240 npx playwright install --with-deps chromium webkit; then
+            start=$SECONDS
+            if timeout -k 15 240 npx playwright install --with-deps chromium webkit; then
+              echo "Playwright install attempt $attempt succeeded after $((SECONDS - start)) s"
               exit 0
             fi
-            echo "Playwright install attempt $attempt failed"
-            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+            echo "Playwright install attempt $attempt failed after $((SECONDS - start)) s"
+            if [ "$attempt" -lt 3 ]; then
+              # timeout kills npx but can leave apt-get running with the dpkg lock held
+              sudo pkill -x apt-get || true
+              sudo pkill -x dpkg || true
+              for _ in $(seq 30); do
+                sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break
+                sleep 1
+              done
+              sudo dpkg --configure -a || true
+              sleep 20
+            fi
           done
           exit 1
       - run: npx playwright test
