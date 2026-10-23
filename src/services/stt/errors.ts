@@ -11,6 +11,24 @@ export const STT_MESSAGES: Record<SttErrorKind, string> = {
   other: 'Speech recognition failed. Try again, or type your answer.',
 }
 
+/** Speech-check panel wording: no mention of typing, since the panel has no text box. */
+const PANEL_MESSAGES: Record<SttErrorKind, string> = {
+  offline: 'Speech recognition needs an internet connection and could not reach it. Tap Listen to try again.',
+  permission: STT_MESSAGES.permission,
+  timeout: 'No speech was detected in time. Tap Listen to try again.',
+  'no-speech': "I didn't hear anything. Tap Listen to try again.",
+  unsupported: "Speech recognition isn't available in this browser.",
+  busy: STT_MESSAGES.busy,
+  aborted: STT_MESSAGES.aborted,
+  other: 'Speech recognition failed. Tap Listen to try again.',
+}
+
+export type SttMessageContext = 'conversation' | 'panel'
+
+export function sttMessage(kind: SttErrorKind, context: SttMessageContext = 'conversation'): string {
+  return context === 'panel' ? PANEL_MESSAGES[kind] : STT_MESSAGES[kind]
+}
+
 /** Maps a Web Speech `error` code. Chrome offline gives "network"; confidence and onLine are never consulted. */
 export function mapSttErrorCode(code: string): SttErrorKind {
   switch (code) {
