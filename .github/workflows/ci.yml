@@ -25,9 +25,17 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
-      - run: printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci-retries
-      - run: npx playwright install --with-deps chromium webkit
-        timeout-minutes: 10
+      - name: Install Playwright browsers
+        timeout-minutes: 15
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 240 npx playwright install --with-deps chromium webkit; then
+              exit 0
+            fi
+            echo "Playwright install attempt $attempt failed"
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+          exit 1
       - run: npx playwright test
       - uses: actions/upload-artifact@v4
         if: failure()

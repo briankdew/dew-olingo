@@ -70,8 +70,9 @@
 - [x] Logs of the three hung runs (39798768796, 39803111143, 39840307091) read: all stalled in the apt-get phase of `playwright install --with-deps` (package downloads from azure.archive.ubuntu.com stalling, `Ign:` about 2 min after `Get:`). Passing runs finish the step in 30-60 s.
 - [x] Added a step before the install that sets apt `Acquire::Retries 3` and a 30 s timeout. Nothing else in `ci.yml` changed.
 - Not established: why the mirror stalls, and whether the two older hangs stalled at the same point (their logs go silent after apt starts).
-- [ ] Watch the next runs; if the hang recurs, wrap the install in a `timeout 4m` x3 retry loop.
+- [x] Retry loop built: the install is wrapped in 3 attempts of `timeout 240`, 20 s apart, step `timeout-minutes: 15`. The apt.conf.d step was removed (it did not prevent the hang).
 - **Result (PR #20, same day): the apt change did not prevent the hang.** The step ran, yet the install stalled again on `libcodec2-1.2` (9 MB, `Ign:` after about 100 s, same package as the PR #17 hang) and hit the 10-minute step timeout at package 28 of 181. A 30 s no-data timeout does not fire when data trickles in, so the stall is slow transfer from azure.archive.ubuntu.com, not a dead connection (inferred). A different failure also appeared once: `packages.microsoft.com` returned 403 during `apt update` (exit 100). Both cleared on re-trigger. So the retry-loop step above is now justified; not built yet.
+- [ ] If installs still hang, try running the Playwright tests in the official Playwright container image (unverified; its version must match the installed Playwright).
 
 ## M3 Speech services (2026-10-22)
 - [x] `services/tts` (dedupe by voiceURI, es-MX > es-US > es > es-ES, `speak()` settles only on end), `services/stt` (new recognizer per `listen()`, abort and wait for `end` before the next, watchdog W0-W4 keyed on `audiostart` and `result`), `services/speech.ts` wiring (listen refused while TTS plays; speak aborts a live session).

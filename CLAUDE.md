@@ -110,3 +110,4 @@ The verification spikes are done. Build v1 per `SPEC.md` (screens, milestones, o
 - Retry transient network failures (git, gh, CI) up to 3 times with waits before stopping.
 - Never edit locked lines in CLAUDE.md or SPEC.md without asking first.
 - Summarize any Codex bot review comments on a PR in the report, and add unresolved ones to the TASKS.md follow-ups.
+- When I give feedback on a plan, the revised plan starts with a 'Changes since the last version' list (one line per change) before the full plan.
