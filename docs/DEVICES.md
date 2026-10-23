@@ -41,6 +41,22 @@ Device: iPad 10th generation. User-reported iOS 27; the page's user agent string
 
 Not tested: home-screen mode on iPad; TTS before any recognition; continuous sessions longer than about 2 minutes.
 
+## iPhone Safari: app speech panel and self-test (2026-10-23)
+
+User-run on iPhone, Safari tab, with the app's speech-check panel (M3: a fresh recognizer per Listen). Silent mode off, Bluetooth off, fresh page. User-reported; the events below are from the panel's event list.
+
+- Play sample: spoke.
+- First Listen: captured "hola, cómo estás".
+- Second Listen: no speech; the watchdog fired W1 at 10 s.
+- Self-test Part A (listen, listen): A1 and A2 both failed with W1 although the user spoke. `audiostart` fired; no `result` and no `audioend`. In both runs `end` fired about 50 ms after the app called `abort()`. This is the first iOS evidence of `end` after `abort()` (two runs).
+- Self-test Part B: hung at "the app is speaking". No speech was heard and no timeout fired. Cause unknown. Two candidates, both inferred and untested: a user-gesture requirement for `speak()` (the self-test starts it after earlier async steps, not directly in a tap), or a bad audio state left by the aborted recognition.
+
+Conclusion: the fresh-recognizer-per-listen rule fails on iPhone Safari (tab). It matches the earlier spike result above (new recognizer per tap: first attempt captures, later ones hang). A continuous-session or other approach is to be chosen and tested before M7.
+
+iPad Safari tab (2026-10-23, user-run, fresh page): Play sample spoke; the first Listen captured; the second Listen timed out. Same results as the iPhone.
+
+Not tested: the iPad Self-test; the home-screen apps (iPhone and iPad) with the panel.
+
 ## GitHub Contents API CORS (2026-10-20)
 
 Question: can a page on `https://briankdew.github.io` call `api.github.com` (Contents API) from the browser, including the preflight for an authenticated PUT?
