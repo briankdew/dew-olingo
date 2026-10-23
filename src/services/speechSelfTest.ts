@@ -82,9 +82,11 @@ export interface SelfTestSummary {
   text: string
 }
 
-/** Counts passed listens per part (a failed speak step does not count as a listen). */
+/** Counts passed listens per part; a Part B listen whose speak step failed does not pass. */
 export function summarizeSelfTest(rows: SelfTestRow[]): SelfTestSummary {
-  const passed = (part: 'A' | 'B') => rows.filter((r) => r.part === part && r.step === 'listen' && r.ok).length
+  // A Part B round counts only if its speak step also worked; otherwise nothing was tested after playback.
+  const speakFailed = (label: string) => rows.some((r) => r.step === 'speak' && !r.ok && r.label.slice(0, 2) === label.slice(0, 2))
+  const passed = (part: 'A' | 'B') => rows.filter((r) => r.part === part && r.step === 'listen' && r.ok && !speakFailed(r.label)).length
   const aPassed = passed('A')
   const bPassed = passed('B')
   const aOk = aPassed === 2

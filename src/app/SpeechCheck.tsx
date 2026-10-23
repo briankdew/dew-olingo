@@ -15,6 +15,7 @@ export function SpeechCheck() {
   const [rows, setRows] = useState<SelfTestRow[]>([])
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
+  const [testVoice, setTestVoice] = useState<VoiceLike | undefined>()
   const [copyNote, setCopyNote] = useState('')
   const edited = useRef(false)
   const abort = useRef(new AbortController())
@@ -67,6 +68,7 @@ export function SpeechCheck() {
     setBusy(true)
     setRunning(true)
     setFinished(false)
+    setTestVoice(voice)
     setCopyNote('')
     setRows([])
     const signal = abort.current.signal
@@ -90,7 +92,7 @@ export function SpeechCheck() {
 
   const copyResults = async () => {
     try {
-      await navigator.clipboard.writeText(buildReport(rows, voice))
+      await navigator.clipboard.writeText(buildReport(rows, testVoice))
       setCopyNote('Copied.')
     } catch {
       setCopyNote('Copy failed. Select the results and copy them by hand.')
@@ -162,11 +164,11 @@ export function SpeechCheck() {
             <br />
             {summary.line}
             <br />
-            Voice used: {voiceLabel(voice)}
+            Voice used: {voiceLabel(testVoice)}
           </p>
         </div>
       )}
-      {rows.length > 0 && !running && (
+      {finished && (
         <p>
           <button type="button" onClick={() => void copyResults()}>
             Copy results

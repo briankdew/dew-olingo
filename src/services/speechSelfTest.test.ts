@@ -34,9 +34,11 @@ describe('summarizeSelfTest', () => {
     expect(s.text).toBe('Part A: 0 of 2 passed. Part B: 0 of 2 passed.')
     expect(s.line).toBe('Both problems appeared.')
   })
-  it('a failed speak step is not counted as a listen', () => {
+  it('a Part B round whose speak step failed does not pass', () => {
     const speak: SelfTestRow = { part: 'B', step: 'speak', label: 'B1 speak', ok: false, text: 'x', events: [], endNotSeen: false }
-    expect(summarizeSelfTest([...rows([true, true], [true, true]), speak]).line).toBe('No problems found.')
+    const s = summarizeSelfTest([...rows([true, true], [true, true]), speak])
+    expect(s.text).toBe('Part A: 2 of 2 passed. Part B: 1 of 2 passed.')
+    expect(s.line).toBe('Listening right after the app speaks has a problem on this device.')
   })
 })
 
